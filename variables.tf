@@ -12,13 +12,13 @@ variable "gcp_project" {
 variable "cluster_name" {
   description = "Name of the Kubernetes cluster to create"
   type        = string
-  default     = ""
+  default     = "iskprinter"
 }
 
 variable "cluster_location" {
   description = "The location (region or zone) in which the cluster master will be created. If you specify a zone (such as us-central1-a), the cluster will be a zonal cluster with a single cluster master. If you specify a region (such as us-west1), the cluster will be a regional cluster with multiple masters spread across zones in the region"
   type        = string
-  default     = "us-central1-a"
+  default     = "us-west1-a"
 }
 
 variable "resource_labels" {
@@ -33,13 +33,13 @@ variable "resource_labels" {
 variable "node_machine_type" {
   description = "Node type for the Kubernetes cluster"
   type        = string
-  default     = "n1-standard-2"
+  default     = "e2-standard-2"
 }
 
 variable "min_node_count" {
   description = "Minimum number of cluster nodes"
   type        = number
-  default     = 3
+  default     = 2
 }
 
 variable "max_node_count" {
@@ -72,13 +72,13 @@ variable "force_destroy" {
 variable "apex_domain" {
   description = "The apex / parent domain to be allocated to the cluster"
   type        = string
-  default     = ""
+  default     = "iskprinter.com"
 }
 
 variable "tls_email" {
   description = "Email used by Let's Encrypt. Required for TLS when parent_domain is specified"
   type        = string
-  default     = ""
+  default     = "CameronHudson8@gmail.com"
 }
 
 variable "lets_encrypt_production" {
@@ -111,7 +111,7 @@ variable "jx_bot_token" {
 variable "subdomain" {
   description = "Optional sub domain for the installation"
   type        = string
-  default     = ""
+  default     = "jenkins-x"
 }
 
 variable "apex_domain_gcp_project" {
