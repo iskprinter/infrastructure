@@ -1,3 +1,9 @@
+terraform {
+  backend "gcs" {
+    bucket  = "iskprinter-terraform-state"
+  }
+}
+
 module "jx" {
   source                          = "github.com/jenkins-x/terraform-google-jx?ref=v1.10.0"
   gcp_project                     = var.gcp_project
