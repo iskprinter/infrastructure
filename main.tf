@@ -1,13 +1,12 @@
 terraform {
   backend "gcs" {
-    bucket  = "iskprinter-terraform-state"
+    bucket = "iskprinter-terraform-state"
   }
 }
 
-module "jx" {
-  source                          = "github.com/jenkins-x/terraform-google-jx?ref=v1.10.0"
+module "infrastructure" {
+  source                          = "./modules/gcp/"
   gcp_project                     = var.gcp_project
-  jx2                             = false
   gsm                             = var.gsm
   cluster_name                    = var.cluster_name
   cluster_location                = var.cluster_location
@@ -27,20 +26,4 @@ module "jx" {
   subdomain                       = var.subdomain
   apex_domain_gcp_project         = var.apex_domain_gcp_project
   apex_domain_integration_enabled = var.apex_domain_integration_enabled
-
-}
-
-output "connect" {
-  description = "Connect to cluster"
-  value       = module.jx.connect
-}
-
-output "follow_install_logs" {
-  description = "Follow Jenkins X install logs"
-  value       = "jx admin log"
-}
-
-output "docs" {
-  description = "Follow Jenkins X 3.x alpha docs for more information"
-  value       = "https://jenkins-x.io/v3/"
 }
