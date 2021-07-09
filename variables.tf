@@ -112,7 +112,7 @@ variable "jx_bot_token" {
 variable "jenkins_x_subdomain" {
   description = "Optional sub domain for the installation"
   type        = string
-  default     = "jenkins-x"
+  default     = ""
 }
 
 variable "apex_domain_gcp_project" {

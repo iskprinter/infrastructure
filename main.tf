@@ -8,7 +8,6 @@ module "dns" {
   source              = "./modules/dns/"
   gcp_project         = var.gcp_project
   apex_domain         = var.apex_domain
-  jenkins_x_subdomain = var.jenkins_x_subdomain
 }
 
 module "jx" {
