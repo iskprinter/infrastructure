@@ -1,6 +1,3 @@
-
-// Begin Official Jenkins-X content
-
 // ----------------------------------------------------------------------------
 // Required Variables
 // ----------------------------------------------------------------------------
@@ -112,7 +109,7 @@ variable "jx_bot_token" {
   type        = string
 }
 
-variable "subdomain" {
+variable "jenkins_x_subdomain" {
   description = "Optional sub domain for the installation"
   type        = string
   default     = "jenkins-x"
@@ -129,5 +126,3 @@ variable "apex_domain_integration_enabled" {
   type        = bool
   default     = true
 }
-
-// End Official Jenkins-X content

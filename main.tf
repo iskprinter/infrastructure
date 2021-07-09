@@ -4,9 +4,17 @@ terraform {
   }
 }
 
-module "infrastructure" {
-  source                          = "./modules/gcp/"
+module "dns" {
+  source              = "./modules/dns/"
+  gcp_project         = var.gcp_project
+  apex_domain         = var.apex_domain
+  jenkins_x_subdomain = var.jenkins_x_subdomain
+}
+
+module "jx" {
+  source                          = "github.com/jenkins-x/terraform-google-jx?ref=v1.10.0"
   gcp_project                     = var.gcp_project
+  jx2                             = false
   gsm                             = var.gsm
   cluster_name                    = var.cluster_name
   cluster_location                = var.cluster_location
@@ -22,8 +30,8 @@ module "infrastructure" {
   jx_bot_username                 = var.jx_bot_username
   jx_bot_token                    = var.jx_bot_token
   force_destroy                   = var.force_destroy
-  apex_domain                     = var.apex_domain
-  subdomain                       = var.subdomain
+  apex_domain                     = module.dns.apex_domain
+  subdomain                       = var.jenkins_x_subdomain
   apex_domain_gcp_project         = var.apex_domain_gcp_project
   apex_domain_integration_enabled = var.apex_domain_integration_enabled
 }
