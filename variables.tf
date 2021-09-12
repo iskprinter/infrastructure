@@ -22,12 +22,6 @@ variable "cluster_location" {
   default     = "us-west1-a"
 }
 
-variable "resource_labels" {
-  description = "Set of labels to be applied to the cluster"
-  type        = map(string)
-  default     = {}
-}
-
 // ----------------------------------------------------------------------------
 // cluster configuration
 // ----------------------------------------------------------------------------
@@ -61,12 +55,6 @@ variable "node_disk_type" {
   default     = "pd-standard"
 }
 
-variable "force_destroy" {
-  description = "Flag to determine whether storage buckets get forcefully destroyed"
-  type        = bool
-  default     = false
-}
-
 // ----------------------------------------------------------------------------
 // Ingress
 // ----------------------------------------------------------------------------
@@ -82,47 +70,19 @@ variable "tls_email" {
   default     = "CameronHudson8@gmail.com"
 }
 
-variable "lets_encrypt_production" {
-  description = "Flag to determine wether or not to use the Let's Encrypt production server."
-  type        = bool
-  default     = true
-}
-
-variable "gsm" {
-  description = "Enables Google Secrets Manager, not available with JX2"
-  type        = bool
-  default     = false
-}
-
 variable "jx_git_url" {
-  description = "URL for the Jenins X cluster git repository"
+  description = "URL for the Jenkins X cluster git repository"
   type        = string
+  default     = "https://github.com/iskprinter/cluster"
 }
 
 variable "jx_bot_username" {
   description = "Bot username used to interact with the Jenkins X cluster git repository"
   type        = string
+  default     = "IskprinterGitBot"
 }
 
 variable "jx_bot_token" {
   description = "Bot token used to interact with the Jenkins X cluster git repository"
   type        = string
-}
-
-variable "jenkins_x_subdomain" {
-  description = "Optional sub domain for the installation"
-  type        = string
-  default     = ""
-}
-
-variable "apex_domain_gcp_project" {
-  description = "The GCP project the parent domain is managed by, used to write recordsets for a subdomain if set.  Defaults to current project."
-  type        = string
-  default     = ""
-}
-
-variable "apex_domain_integration_enabled" {
-  description = "Add recordsets from a subdomain to a parent / apex domain"
-  type        = bool
-  default     = true
 }

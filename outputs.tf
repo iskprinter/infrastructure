@@ -1,6 +1,6 @@
 output "connect" {
   description = "Connect to cluster"
-  value       = module.jx.connect
+  value       = module.jenkins_x.connect
 }
 
 output "follow_install_logs" {
