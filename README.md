@@ -1,9 +1,6 @@
 # infrastructure
-Terraform-deployed Kubernetes cluster, Hashicorp vault, and Jenkins X controller
 
-# About
-
-This repo is based on [jx3-gitops-repositories/jx3-terraform-gke](https://github.com/jx3-gitops-repositories/jx3-terraform-gke) (main branch).
+Deploys a Kubernetes cluster and supporting resources
 
 # How to deploy
 
@@ -17,18 +14,16 @@ This repo is based on [jx3-gitops-repositories/jx3-terraform-gke](https://github
     gsutil versioning set on gs://iskprinter-terraform-state
     ```
 
-1. Export the GitHub personal access token of the bot that will mediate between Jenkins X and the cluster repository.
-    ```
-    export TF_VAR_jx_bot_token='my-bots-personal-access-token'
-    ````
-
 1. After that, you should be able to deploy.
     ```
     terraform init
     terraform apply
     ```
 
-1. 
+1. Configure your local `~/.kube/config` so that you can use kubectl with the cluster.
+    ```
+    
+    ```
 
 # How to make the application live
 
