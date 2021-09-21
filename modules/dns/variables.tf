@@ -1,9 +1,7 @@
 variable "project" {
-  type    = string
-  default = "cameronhudson8"
+  type = string
 }
 
-variable "apex_domain" {
-  type    = string
-  default = "iskprinter.com"
+variable "ingress_ip" {
+  type = string
 }

@@ -16,5 +16,5 @@ variable "cluster_ca_certificate" {
 }
 
 variable "nginx_version" {
-  type    = string
+  type = string
 }

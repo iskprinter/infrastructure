@@ -9,18 +9,18 @@ variable "location" {
 }
 
 variable "min_node_count" {
-  type = number
+  type    = number
   default = 2
 }
 
 variable "max_node_count" {
-  type = number
+  type    = number
   default = 4
 }
 
 variable "nginx_version" {
   type    = string
-  default = "0.10.1"  # The helm chart version. Corresponds to Nginx 1.12.1.
+  default = "0.10.1" # The helm chart version. Corresponds to Nginx 1.12.1.
 }
 
 # // ----------------------------------------------------------------------------
