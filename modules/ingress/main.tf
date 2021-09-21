@@ -11,7 +11,7 @@ provider "helm" {
 # I created a question on the helm provider gitub repo:
 # https://github.com/hashicorp/terraform-provider-helm/issues/783
 # As a workaround, I deployed it manually, with:
-# helm install -n ingress nginx-ingress nginx-stable/nginx-ingress
+# helm install -n ingress nginx-ingress nginx-stable/nginx-ingress --set controller.replicaCount=2
 resource "helm_release" "nginx" {
   name             = "nginx-ingress"
   repository       = "https://helm.nginx.com/stable"
