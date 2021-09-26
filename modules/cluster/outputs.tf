@@ -4,9 +4,7 @@ output "kubeconfig" {
 }
 
 output "cluster_endpoint" {
-  description = "The API endpoint for kubectl and helm commands."
-  value       = google_container_cluster.general_purpose.endpoint
-
+  value = google_container_cluster.general_purpose.endpoint
 }
 
 output "cluster_client_certificate" {
