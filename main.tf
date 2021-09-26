@@ -12,6 +12,12 @@ module "cluster" {
   max_node_count = var.max_node_count
 }
 
+module "database" {
+  source                       = "./modules/database/"
+  neo4j_version                = var.neo4j_version
+  neo4j_persistent_volume_size = var.neo4j_persistent_volume_size
+}
+
 # TODO: figure out why this module tries to run as a user "client" devoid of permissions
 module "ingress" {
   source                     = "./modules/ingress"
