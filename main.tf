@@ -7,13 +7,15 @@ terraform {
 module "cluster" {
   source         = "./modules/cluster/"
   project        = var.project
-  location       = var.location
+  location       = "${var.region}-a"
   min_node_count = var.min_node_count
   max_node_count = var.max_node_count
 }
 
 module "database" {
   source                       = "./modules/database/"
+  project                      = var.project
+  region                       = var.region
   cluster_endpoint             = module.cluster.cluster_endpoint
   cluster_client_certificate   = module.cluster.cluster_client_certificate
   cluster_client_key           = module.cluster.cluster_client_key

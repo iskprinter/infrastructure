@@ -3,9 +3,9 @@ variable "project" {
   default = "cameronhudson8"
 }
 
-variable "location" {
+variable "region" {
   type    = string
-  default = "us-west1-a"
+  default = "us-west1"
 }
 
 variable "min_node_count" {

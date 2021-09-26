@@ -1,3 +1,9 @@
+locals {
+  namespace    = "database"
+  chart_name   = "neo4j"
+  release_name = "neo4j"
+}
+
 provider "helm" {
   kubernetes {
     host                   = "https://${var.cluster_endpoint}"
@@ -7,7 +13,14 @@ provider "helm" {
   }
 }
 
-resource "random_password" "neo4j_password" {
+provider "kubernetes" {
+  host                   = "https://${var.cluster_endpoint}"
+  client_certificate     = var.cluster_client_certificate
+  client_key             = var.cluster_client_key
+  cluster_ca_certificate = var.cluster_ca_certificate
+}
+
+resource "random_password" "neo4j" {
   length      = 16
   min_lower   = 1
   min_numeric = 1
@@ -16,10 +29,10 @@ resource "random_password" "neo4j_password" {
 }
 
 resource "helm_release" "neo4j" {
-  name             = "neo4j"
-  chart            = "https://github.com/neo4j-contrib/neo4j-helm/releases/download/${var.neo4j_version}/neo4j-${var.neo4j_version}.tgz"
+  name             = local.release_name
+  chart            = "https://github.com/neo4j-contrib/neo4j-helm/releases/download/${var.neo4j_version}/${local.chart_name}-${var.neo4j_version}.tgz"
   version          = var.neo4j_version
-  namespace        = "database"
+  namespace        = local.namespace
   create_namespace = true
   set {
     name  = "acceptLicenseAgreement"
@@ -35,10 +48,47 @@ resource "helm_release" "neo4j" {
   }
   set_sensitive {
     name  = "neo4jPassword"
-    value = random_password.neo4j_password.result
+    value = random_password.neo4j.result
   }
   set {
     name  = "readReplica.persistentVolume.size"
     value = var.neo4j_persistent_volume_size
   }
 }
+
+data "kubernetes_persistent_volume_claim" "neo4j" {
+  metadata {
+    namespace = local.namespace
+    name      = "datadir-${local.chart_name}-${local.release_name}-core-0"
+  }
+}
+
+resource "google_compute_resource_policy" "neo4j_backup_policy" {
+  project = var.project
+  name    = "neo4j-backup"
+  region  = var.region
+  snapshot_schedule_policy {
+    schedule {
+      daily_schedule {
+        days_in_cycle = 1
+        start_time    = "12:00" # UTC
+      }
+    }
+    retention_policy {
+      max_retention_days    = 30
+      on_source_disk_delete = "KEEP_AUTO_SNAPSHOTS"
+    }
+  }
+}
+
+# This resource has to be created manually
+# because there is no way to access the ID
+# of the PV that fulfills the PVC.
+# Refer to https://github.com/hashicorp/terraform-provider-kubernetes/issues/1232
+# for the open feature request.
+# resource "google_compute_disk_resource_policy_attachment" "neo4j_backup_policy_attachment" {
+#   project = var.project
+#   zone    = "${var.region}-a"
+#   name    = google_compute_resource_policy.neo4j_backup_policy.name
+#   disk    = "pvc-${data.kubernetes_persistent_volume_claim.neo4j.metadata.uid}"
+# }
