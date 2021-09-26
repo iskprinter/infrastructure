@@ -38,3 +38,12 @@ module "dns" {
   project    = var.project
   ingress_ip = module.ingress.ip
 }
+
+module "cicd" {
+  source                     = "./modules/cicd/"
+  cluster_endpoint           = module.cluster.cluster_endpoint
+  cluster_client_certificate = module.cluster.cluster_client_certificate
+  cluster_client_key         = module.cluster.cluster_client_key
+  cluster_ca_certificate     = module.cluster.cluster_ca_certificate
+  tekton_version             = var.tekton_version
+}
