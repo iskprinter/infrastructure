@@ -1,21 +1,14 @@
-# For some reason, this is not working right now.
-# I created a question on the helm provider gitub repo:
-# https://github.com/hashicorp/terraform-provider-helm/issues/783
-# As a workaround, I deployed it manually, with:
-# helm install -n ingress nginx-ingress nginx-stable/nginx-ingress --set controller.replicaCount=2
-
 provider "helm" {
   kubernetes {
-    # host                   = "https://${var.cluster_endpoint}"
-    config_path            = "~/.kube/config"
-    # client_certificate     = var.cluster_client_certificate
-    # client_key             = var.cluster_client_key
-    # cluster_ca_certificate = var.cluster_ca_certificate
+    host                   = "https://${var.cluster_endpoint}"
+    client_certificate     = var.cluster_client_certificate
+    client_key             = var.cluster_client_key
+    cluster_ca_certificate = var.cluster_ca_certificate
   }
 }
 
 resource "random_password" "neo4j_password" {
-  length = 16
+  length      = 16
   min_lower   = 1
   min_numeric = 1
   min_special = 1

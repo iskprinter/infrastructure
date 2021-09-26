@@ -24,11 +24,11 @@ variable "nginx_version" {
 }
 
 variable "neo4j_version" {
-  type = string
+  type    = string
   default = "4.3.4" # The Neo4j version.
 }
 
 variable "neo4j_persistent_volume_size" {
-  type = string
+  type    = string
   default = "32Gi"
 }
