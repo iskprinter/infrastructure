@@ -32,3 +32,8 @@ variable "neo4j_persistent_volume_size" {
   type    = string
   default = "32Gi"
 }
+
+variable "tekton_version" {
+  type    = string
+  default = "0.28.0"
+}
