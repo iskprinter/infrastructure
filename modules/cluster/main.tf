@@ -12,8 +12,8 @@ resource "google_container_cluster" "general_purpose" {
   initial_node_count       = 1 # For default pool, which gets removed
   master_auth {
     client_certificate_config {
-      # Disables basic auth to master
       issue_client_certificate = true
+      # Omit username and password to disable insecure basic auth to master
     }
   }
 }
@@ -36,5 +36,40 @@ resource "google_container_node_pool" "gke_node_pool" {
       "https://www.googleapis.com/auth/cloud-platform"
     ]
   }
+}
 
+data "google_client_config" "current" {}
+
+provider "kubernetes" {
+  host                   = "https://${google_container_cluster.general_purpose.endpoint}"
+  token                  = data.google_client_config.current.access_token
+  cluster_ca_certificate = base64decode(google_container_cluster.general_purpose.master_auth.0.cluster_ca_certificate)
+}
+
+resource "kubernetes_cluster_role_binding" "client_cluster_admin" {
+  metadata {
+    annotations = {}
+    labels      = {}
+    name        = "client-cluster-admin"
+  }
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "ClusterRole"
+    name      = "cluster-admin"
+  }
+  subject {
+    kind      = "User"
+    name      = "client"
+    api_group = "rbac.authorization.k8s.io"
+  }
+  subject {
+    kind      = "ServiceAccount"
+    name      = "default"
+    namespace = "kube-system"
+  }
+  subject {
+    kind      = "Group"
+    name      = "system:masters"
+    api_group = "rbac.authorization.k8s.io"
+  }
 }

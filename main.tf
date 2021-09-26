@@ -14,11 +14,14 @@ module "cluster" {
 
 module "database" {
   source                       = "./modules/database/"
+  cluster_endpoint             = module.cluster.cluster_endpoint
+  cluster_client_certificate   = module.cluster.cluster_client_certificate
+  cluster_client_key           = module.cluster.cluster_client_key
+  cluster_ca_certificate       = module.cluster.cluster_ca_certificate
   neo4j_version                = var.neo4j_version
   neo4j_persistent_volume_size = var.neo4j_persistent_volume_size
 }
 
-# TODO: figure out why this module tries to run as a user "client" devoid of permissions
 module "ingress" {
   source                     = "./modules/ingress"
   cluster_endpoint           = module.cluster.cluster_endpoint
