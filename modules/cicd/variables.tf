@@ -15,6 +15,10 @@ variable "cluster_ca_certificate" {
   type = string
 }
 
-variable "tekton_version" {
+variable "tekton_pipeline_version" {
+  type = string
+}
+
+variable "tekton_triggers_version" {
   type = string
 }
