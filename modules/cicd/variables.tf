@@ -23,11 +23,16 @@ variable "tekton_triggers_version" {
   type = string
 }
 
-variable "git_user" {
+variable "git_bot_ssh_key_base64" {
+  type      = string
+  sensitive = true
+}
+
+variable "git_bot_container_registry_username" {
   type = string
 }
 
-variable "git_ssh_key_base64" {
+variable "git_bot_container_registry_access_token" {
   type      = string
   sensitive = true
 }
