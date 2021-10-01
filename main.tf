@@ -50,4 +50,5 @@ module "cicd" {
   git_bot_container_registry_access_token = var.git_bot_container_registry_access_token
   tekton_pipeline_version                 = var.tekton_pipeline_version
   tekton_triggers_version                 = var.tekton_triggers_version
+  tekton_dashboard_version                = var.tekton_dashboard_version
 }

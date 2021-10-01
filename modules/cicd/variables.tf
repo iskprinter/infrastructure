@@ -23,6 +23,10 @@ variable "tekton_triggers_version" {
   type = string
 }
 
+variable "tekton_dashboard_version" {
+  type = string
+}
+
 variable "git_bot_ssh_key_base64" {
   type      = string
   sensitive = true

@@ -66,6 +66,23 @@ resource "kubectl_manifest" "tekton_triggers_interceptors" {
   wait_for_rollout = false
 }
 
+# Tekton Dashboard
+
+data "google_storage_bucket_object_content" "tekton_dashboard" {
+  name   = "dashboard/previous/v${var.tekton_dashboard_version}/tekton-dashboard-release.yaml"
+  bucket = "tekton-releases"
+}
+
+data "kubectl_file_documents" "tekton_dashboard" {
+  content = data.google_storage_bucket_object_content.tekton_dashboard.content
+}
+
+resource "kubectl_manifest" "tekton_dashboard" {
+  count            = length(data.kubectl_file_documents.tekton_dashboard.documents)
+  yaml_body        = element(data.kubectl_file_documents.tekton_dashboard.documents, count.index)
+  wait_for_rollout = false
+}
+
 # Service account and credentials
 # Based on https://github.com/sdaschner/tekton-argocd-example
 
