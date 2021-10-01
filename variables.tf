@@ -52,6 +52,11 @@ variable "tekton_triggers_version" {
   default = "0.15.2"
 }
 
+variable "tekton_dashboard_version" {
+  type = string
+  default = "0.20.0"
+}
+
 variable "git_bot_ssh_key_base64" {
   type      = string
   sensitive = true
