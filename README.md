@@ -14,9 +14,14 @@ Deploys a Kubernetes cluster and supporting resources
     gsutil versioning set on gs://iskprinter-terraform-state
     ```
 
-1. Export the base64-encoded SSH key that the git bot will use.
+1. Export the base64-encoded SSH key that the service account will use to pull from GitHub.
     ```bash
-    export TF_VAR_git_ssh_key_base64=$(cat "${HOME}/.ssh/IskprinterGitBot.id_rsa" | base64)
+    export TF_VAR_git_bot_ssh_key_base64=$(cat "${HOME}/.ssh/IskprinterGitBot.id_rsa" | base64)
+    ```
+
+1. Export the unencoded SSH key that the service account will use to push to Docker Hub.
+    ```bash
+    export TF_VAR_git_bot_container_registry_access_tokensh_key_base64='<access-token>'
     ```
 
 1. Initialize and deploy.

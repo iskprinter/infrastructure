@@ -66,21 +66,143 @@ resource "kubectl_manifest" "tekton_triggers_interceptors" {
   wait_for_rollout = false
 }
 
-# SSH Key
+# Service account and credentials
+# Based on https://github.com/sdaschner/tekton-argocd-example
+
 resource "kubernetes_manifest" "git_bot_ssh_key" {
   manifest = {
     apiVersion = "v1"
     kind       = "Secret"
     type       = "kubernetes.io/ssh-auth"
     metadata = {
-      name      = "git-ssh-key"
+      name      = "git-bot-ssh-key"
       namespace = "tekton-pipelines"
       annotations = {
         "tekton.dev/git-0" = "github.com"
       }
     }
     data = {
-      ssh-privatekey = var.git_ssh_key_base64
+      ssh-privatekey = var.git_bot_ssh_key_base64
     }
+  }
+}
+
+resource "kubernetes_manifest" "git_bot_container_registry_access_token" {
+  manifest = {
+    apiVersion = "v1"
+    kind       = "Secret"
+    type       = "kubernetes.io/basic-auth"
+    metadata = {
+      name      = "git-bot-container-registry-credentials"
+      namespace = "tekton-pipelines"
+      annotations = {
+        "tekton.dev/docker-0" = "hub.docker.com"
+      }
+    }
+    data = {
+      username = base64encode(var.git_bot_container_registry_username)
+      password = base64encode(var.git_bot_container_registry_access_token)
+    }
+  }
+}
+
+# Use a kubectl_manifest for this because kubernetes_manifest has an issue with the automatic service account token
+resource "kubectl_manifest" "git_bot_service_account" {
+  yaml_body = <<EOF
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: git-bot
+  namespace: tekton-pipelines
+secrets:
+- name: git-bot-container-registry-credentials
+- name: git-bot-ssh-key
+EOF
+}
+
+resource "kubernetes_manifest" "git_bot_role" {
+  manifest = {
+    apiVersion = "rbac.authorization.k8s.io/v1"
+    kind       = "Role"
+    metadata = {
+      name      = "git-bot-role"
+      namespace = "tekton-pipelines"
+    }
+    rules = [
+      {
+        apiGroups = ["serving.knative.dev"]
+        resources = ["*"]
+        verbs     = ["*"]
+      },
+      {
+        apiGroups = ["eventing.knative.dev"]
+        resources = ["*"]
+        verbs     = ["*"]
+      },
+      {
+        apiGroups = ["sources.eventing.knative.dev"]
+        resources = ["*"]
+        verbs     = ["*"]
+      },
+      {
+        apiGroups = [""]
+        resources = [
+          "pods",
+          "services",
+          "endpoints",
+          "configmaps",
+          "secrets",
+        ]
+        verbs = ["*"]
+      },
+      {
+        apiGroups = ["apps"]
+        resources = [
+          "deployments",
+          "daemonsets",
+          "replicasets",
+          "statefulsets",
+        ]
+        verbs = ["*"]
+      },
+      {
+        apiGroups = [""]
+        resources = ["pods"]
+        verbs     = ["get"]
+      },
+      {
+        apiGroups = ["apps"]
+        resources = [
+          "replicasets"
+        ]
+        verbs = [
+          "get"
+        ]
+      }
+    ]
+  }
+}
+
+resource "kubernetes_manifest" "git_bot_role_binding" {
+
+  manifest = {
+    apiVersion = "rbac.authorization.k8s.io/v1"
+    kind       = "RoleBinding"
+    metadata = {
+      name      = "git-bot-role-binding"
+      namespace = "tekton-pipelines"
+    }
+    roleRef = {
+      kind     = "Role"
+      name     = "git-bot-role"
+      apiGroup = "rbac.authorization.k8s.io"
+    }
+    subjects = [
+      {
+        kind      = "ServiceAccount"
+        name      = "git-bot"
+        namespace = "tekton-pipelines"
+      }
+    ]
   }
 }
