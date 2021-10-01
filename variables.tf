@@ -1,3 +1,5 @@
+
+# GCP Environment
 variable "project" {
   type    = string
   default = "cameronhudson8"
@@ -18,10 +20,15 @@ variable "max_node_count" {
   default = 4
 }
 
+# Ingress
+
 variable "nginx_version" {
   type    = string
   default = "0.10.1" # The helm chart version. Corresponds to Nginx 1.12.1.
 }
+
+# Database
+
 
 variable "neo4j_version" {
   type    = string
@@ -33,6 +40,8 @@ variable "neo4j_persistent_volume_size" {
   default = "32Gi"
 }
 
+# CI/CD
+
 variable "tekton_pipeline_version" {
   type    = string
   default = "0.28.0"
@@ -41,4 +50,14 @@ variable "tekton_pipeline_version" {
 variable "tekton_triggers_version" {
   type    = string
   default = "0.15.2"
+}
+
+variable "git_user" {
+  type    = string
+  default = "IskprinterGitBot"
+}
+
+variable "git_ssh_key_base64" {
+  type      = string
+  sensitive = true
 }

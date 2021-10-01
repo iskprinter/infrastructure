@@ -5,6 +5,16 @@ provider "kubectl" {
   cluster_ca_certificate = var.cluster_ca_certificate
 }
 
+provider "kubernetes" {
+  host                   = "https://${var.cluster_endpoint}"
+  client_certificate     = var.cluster_client_certificate
+  client_key             = var.cluster_client_key
+  cluster_ca_certificate = var.cluster_ca_certificate
+  experiments {
+    manifest_resource = true
+  }
+}
+
 # Tekton Pipeline
 
 data "google_storage_bucket_object_content" "tekton_pipeline" {
@@ -54,4 +64,23 @@ resource "kubectl_manifest" "tekton_triggers_interceptors" {
   count            = length(data.kubectl_file_documents.tekton_triggers_interceptors.documents)
   yaml_body        = element(data.kubectl_file_documents.tekton_triggers_interceptors.documents, count.index)
   wait_for_rollout = false
+}
+
+# SSH Key
+resource "kubernetes_manifest" "git_bot_ssh_key" {
+  manifest = {
+    apiVersion = "v1"
+    kind       = "Secret"
+    type       = "kubernetes.io/ssh-auth"
+    metadata = {
+      name      = "iskprinter-git-bot-ssh-credentials"
+      namespace = "tekton-pipelines"
+      annotations = {
+        "tekton.dev/git-0" = "github.com"
+      }
+    }
+    data = {
+      ssh-privatekey = var.git_ssh_key_base64
+    }
+  }
 }

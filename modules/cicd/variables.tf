@@ -22,3 +22,12 @@ variable "tekton_pipeline_version" {
 variable "tekton_triggers_version" {
   type = string
 }
+
+variable "git_user" {
+  type = string
+}
+
+variable "git_ssh_key_base64" {
+  type      = string
+  sensitive = true
+}

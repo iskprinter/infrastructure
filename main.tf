@@ -45,6 +45,8 @@ module "cicd" {
   cluster_client_certificate = module.cluster.cluster_client_certificate
   cluster_client_key         = module.cluster.cluster_client_key
   cluster_ca_certificate     = module.cluster.cluster_ca_certificate
+  git_user                   = var.git_user
+  git_ssh_key_base64         = var.git_ssh_key_base64
   tekton_pipeline_version    = var.tekton_pipeline_version
   tekton_triggers_version    = var.tekton_triggers_version
 }

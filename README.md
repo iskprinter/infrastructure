@@ -5,30 +5,35 @@ Deploys a Kubernetes cluster and supporting resources
 # How to deploy
 
 1. Create a GCS bucket for use as a terraform backend.
-    ```
+    ```bash
     gsutil mb gs://iskprinter-terraform-state --location=US
     ```
 
 1. Enable versioning on the bucket.
-    ```
+    ```bash
     gsutil versioning set on gs://iskprinter-terraform-state
     ```
 
-1. After that, you should be able to deploy.
+1. Export the base64-encoded SSH key that the git bot will use.
+    ```bash
+    export TF_VAR_git_ssh_key_base64=$(cat "${HOME}/.ssh/IskprinterGitBot.id_rsa" | base64)
     ```
+
+1. Initialize and deploy.
+    ```bash
     terraform init
     terraform apply
     ```
 
 1. Configure your local `~/.kube/config` so that you can use kubectl with the cluster.
-    ```
+    ```bash
     
     ```
 
 # How to make the application live
 
 1. List the nameservers of the managed zone
-    ```
+    ```bash
     gcloud dns managed-zones describe iskprinter-com
     ```
     
@@ -40,7 +45,7 @@ Deploys a Kubernetes cluster and supporting resources
 # Local environment setup
 
 1. Add the cluster to your kubeconfig.
-    ```
+    ```bash
     gcloud container clusters get-credentials \
         iskprinter \
         --project cameronhudson8 \
@@ -48,7 +53,7 @@ Deploys a Kubernetes cluster and supporting resources
     ```
 
 1. Rename the kube context for convenience.
-    ```
+    ```bash
     kubectl config rename-context \
         gke_cameronhudson8_us-west1-a_iskprinter \
         iskprinter
