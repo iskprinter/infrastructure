@@ -73,7 +73,7 @@ resource "kubernetes_manifest" "git_bot_ssh_key" {
     kind       = "Secret"
     type       = "kubernetes.io/ssh-auth"
     metadata = {
-      name      = "iskprinter-git-bot-ssh-credentials"
+      name      = "git-ssh-key"
       namespace = "tekton-pipelines"
       annotations = {
         "tekton.dev/git-0" = "github.com"
