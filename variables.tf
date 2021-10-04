@@ -53,7 +53,7 @@ variable "tekton_triggers_version" {
 }
 
 variable "tekton_dashboard_version" {
-  type = string
+  type    = string
   default = "0.20.0"
 }
 
@@ -63,7 +63,7 @@ variable "git_bot_ssh_key_base64" {
 }
 
 variable "git_bot_container_registry_username" {
-  type = string
+  type    = string
   default = "iskprintergitbot"
 }
 

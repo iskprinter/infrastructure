@@ -41,14 +41,16 @@ module "dns" {
 
 module "cicd" {
   source                                  = "./modules/cicd/"
-  cluster_endpoint                        = module.cluster.cluster_endpoint
+  cluster_ca_certificate                  = module.cluster.cluster_ca_certificate
   cluster_client_certificate              = module.cluster.cluster_client_certificate
   cluster_client_key                      = module.cluster.cluster_client_key
-  cluster_ca_certificate                  = module.cluster.cluster_ca_certificate
+  cluster_endpoint                        = module.cluster.cluster_endpoint
   git_bot_ssh_key_base64                  = var.git_bot_ssh_key_base64
   git_bot_container_registry_username     = var.git_bot_container_registry_username
   git_bot_container_registry_access_token = var.git_bot_container_registry_access_token
+  ingress_ip                              = module.ingress.ip
+  project                                 = var.project
+  tekton_dashboard_version                = var.tekton_dashboard_version
   tekton_pipeline_version                 = var.tekton_pipeline_version
   tekton_triggers_version                 = var.tekton_triggers_version
-  tekton_dashboard_version                = var.tekton_dashboard_version
 }
