@@ -16,6 +16,9 @@ resource "google_container_cluster" "general_purpose" {
       # Omit username and password to disable insecure basic auth to master
     }
   }
+  workload_identity_config {
+    identity_namespace = "${var.project}.svc.id.goog"
+  }
 }
 
 resource "google_container_node_pool" "gke_node_pool" {
@@ -35,14 +38,15 @@ resource "google_container_node_pool" "gke_node_pool" {
     oauth_scopes = [
       "https://www.googleapis.com/auth/cloud-platform"
     ]
+    workload_metadata_config {
+      node_metadata = "GKE_METADATA_SERVER"
+    }
   }
 }
 
-data "google_client_config" "current" {}
-
 provider "kubernetes" {
   host                   = "https://${google_container_cluster.general_purpose.endpoint}"
-  token                  = data.google_client_config.current.access_token
+  token                  = var.access_token
   cluster_ca_certificate = base64decode(google_container_cluster.general_purpose.master_auth.0.cluster_ca_certificate)
 }
 
