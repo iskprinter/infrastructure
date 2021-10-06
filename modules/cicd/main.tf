@@ -32,60 +32,6 @@ resource "kubectl_manifest" "tekton_dashboard" {
   wait_for_rollout = false
 }
 
-# resource "kubernetes_manifest" "certificate_dashboard_tekton_iskprinter_com" {
-resource "kubectl_manifest" "certificate_dashboard_tekton_iskprinter_com" {
-  yaml_body = yamlencode({
-    apiVersion = "cert-manager.io/v1"
-    kind       = "Certificate"
-    metadata = {
-      name      = "certificate-dashboard-tekton-iskprinter-com"
-      namespace = "tekton-pipelines"
-    }
-    spec = {
-      secretName = "tls-dashboard-tekton-iskprinter-com"
-      issuerRef = {
-        # The issuer created previously
-        kind = "ClusterIssuer"
-        name = "lets-encrypt-prod"
-      }
-      dnsNames = [
-        "dashboard.tekton.iskprinter.com"
-      ]
-    }
-  })
-}
-
-resource "kubernetes_ingress" "tekton_dashboard_ingress" {
-  metadata {
-    name      = "tekton-dashboard-ingress"
-    namespace = "tekton-pipelines"
-    annotations = {
-      "kubernetes.io/ingress.class"              = "nginx"
-      "nginx.ingress.kubernetes.io/ssl-redirect" = "true"
-    }
-  }
-  spec {
-    rule {
-      host = "dashboard.tekton.iskprinter.com"
-      http {
-        path {
-          path = "/"
-          backend {
-            service_name = "tekton-dashboard"
-            service_port = 9097
-          }
-        }
-      }
-    }
-    tls {
-      hosts = [
-        "dashboard.tekton.iskprinter.com"
-      ]
-      secret_name = "tls-dashboard-tekton-iskprinter-com"
-    }
-  }
-}
-
 # Service account and credentials
 # Based on https://github.com/sdaschner/tekton-argocd-example
 
@@ -283,8 +229,9 @@ resource "kubernetes_role_binding" "tekon_trigger_role_binding" {
     namespace = "tekton-pipelines"
   }
   subject {
-    kind = "ServiceAccount"
-    name = "tekton-github-triggers"
+    kind      = "ServiceAccount"
+    name      = "tekton-github-triggers"
+    namespace = "tekton-pipelines"
   }
   role_ref {
     api_group = "rbac.authorization.k8s.io"
@@ -306,6 +253,11 @@ resource "kubernetes_cluster_role" "tekon_trigger_cluster_role" {
     api_groups = ["triggers.tekton.dev"]
     resources  = ["clustertriggerbindings"]
     verbs      = ["get", "list", "watch"]
+  }
+  rule {
+    api_groups = ["triggers.tekton.dev"]
+    resources  = ["clusterinterceptors"]
+    verbs      = ["list", "watch"]
   }
 }
 
@@ -344,7 +296,7 @@ resource "kubernetes_secret" "github_trigger_secret" {
     labels      = {}
   }
   data = {
-    secretToken = base64encode(random_password.github_trigger_secret.result)
+    secretToken = random_password.github_trigger_secret.result
   }
 }
 
@@ -507,4 +459,66 @@ resource "kubernetes_manifest" "github_trigger_event_listener" {
       ]
     }
   }
+}
+
+resource "google_dns_record_set" "triggers_tekon_iskprinter_com" {
+  project      = var.project
+  managed_zone = var.dns_managed_zone_name
+  name         = "triggers.tekton.iskprinter.com."
+  type         = "A"
+  rrdatas      = [var.ingress_ip]
+  ttl          = 300
+}
+
+resource "kubernetes_ingress" "tekton_triggers_ingress" {
+  metadata {
+    name      = "tekton-triggers-ingress"
+    namespace = "tekton-pipelines"
+    annotations = {
+      "kubernetes.io/ingress.class"              = "nginx"
+      "nginx.ingress.kubernetes.io/ssl-redirect" = "true"
+    }
+  }
+  spec {
+    rule {
+      host = "triggers.tekton.iskprinter.com"
+      http {
+        path {
+          path = "/"
+          backend {
+            service_name = "el-github-listener-interceptor"
+            service_port = 8080
+          }
+        }
+      }
+    }
+    tls {
+      hosts = [
+        "triggers.tekton.iskprinter.com"
+      ]
+      secret_name = "tls-triggers-tekton-iskprinter-com"
+    }
+  }
+}
+
+resource "kubectl_manifest" "certificate_triggers_tekton_iskprinter_com" {
+  yaml_body = yamlencode({
+    apiVersion = "cert-manager.io/v1"
+    kind       = "Certificate"
+    metadata = {
+      name      = "certificate-triggers-tekton-iskprinter-com"
+      namespace = "tekton-pipelines"
+    }
+    spec = {
+      secretName = "tls-triggers-tekton-iskprinter-com"
+      issuerRef = {
+        # The issuer created previously
+        kind = "ClusterIssuer"
+        name = "lets-encrypt-prod"
+      }
+      dnsNames = [
+        "triggers.tekton.iskprinter.com"
+      ]
+    }
+  })
 }

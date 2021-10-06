@@ -15,6 +15,10 @@ variable "cluster_client_key" {
   sensitive = true
 }
 
+variable "dns_managed_zone_name" {
+  type = string
+}
+
 variable "git_bot_ssh_key_base64" {
   type      = string
   sensitive = true
