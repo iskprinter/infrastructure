@@ -1,47 +1,3 @@
-provider "kubectl" {
-  host                   = "https://${var.cluster_endpoint}"
-  client_certificate     = var.cluster_client_certificate
-  client_key             = var.cluster_client_key
-  cluster_ca_certificate = var.cluster_ca_certificate
-}
-
-provider "kubernetes" {
-  host                   = "https://${var.cluster_endpoint}"
-  client_certificate     = var.cluster_client_certificate
-  client_key             = var.cluster_client_key
-  cluster_ca_certificate = var.cluster_ca_certificate
-  experiments {
-    manifest_resource = true
-  }
-}
-
-# DNS zone
-
-resource "google_dns_managed_zone" "tekton" {
-  project     = var.project
-  name        = "tekton-iskprinter-com"
-  dns_name    = "tekton.iskprinter.com."
-  description = "Managed zone for tekton.iskprinter.com hosts"
-}
-
-resource "google_dns_record_set" "tekton_iskprinter_com" {
-  project      = var.project
-  managed_zone = google_dns_managed_zone.tekton.name
-  name         = "tekton.iskprinter.com."
-  type         = "A"
-  rrdatas      = [var.ingress_ip]
-  ttl          = 300
-}
-
-resource "google_dns_record_set" "wildcard_tekon_iskprinter_com" {
-  project      = var.project
-  managed_zone = google_dns_managed_zone.tekton.name
-  name         = "triggers.tekton.iskprinter.com."
-  type         = "A"
-  rrdatas      = [var.ingress_ip]
-  ttl          = 300
-}
-
 # Tekton Pipeline
 
 data "google_storage_bucket_object_content" "tekton_pipeline" {
@@ -76,43 +32,56 @@ resource "kubectl_manifest" "tekton_dashboard" {
   wait_for_rollout = false
 }
 
-resource "kubernetes_manifest" "tekton_dashboard_ingress" {
-  manifest = {
-    apiVersion = "networking.k8s.io/v1beta1"
-    kind       = "Ingress"
+# resource "kubernetes_manifest" "certificate_dashboard_tekton_iskprinter_com" {
+resource "kubectl_manifest" "certificate_dashboard_tekton_iskprinter_com" {
+  yaml_body = yamlencode({
+    apiVersion = "cert-manager.io/v1"
+    kind       = "Certificate"
     metadata = {
-      name      = "tekton-dashboard-ingress"
+      name      = "certificate-dashboard-tekton-iskprinter-com"
       namespace = "tekton-pipelines"
-      annotations = {
-        "kubernetes.io/ingress.class" = "nginx"
-        "nginx.ingress.kubernetes.io/ssl-redirect" = "true"
-      }
     }
     spec = {
-      rules = [
-        {
-          host = "dashboard.tekton.iskprinter.com"
-          http = {
-            paths = [
-              {
-                path = "/"
-                backend = {
-                  serviceName = "tekton-dashboard"
-                  servicePort = 9097
-                }
-              }
-            ]
+      secretName = "tls-dashboard-tekton-iskprinter-com"
+      issuerRef = {
+        # The issuer created previously
+        kind = "ClusterIssuer"
+        name = "lets-encrypt-prod"
+      }
+      dnsNames = [
+        "dashboard.tekton.iskprinter.com"
+      ]
+    }
+  })
+}
+
+resource "kubernetes_ingress" "tekton_dashboard_ingress" {
+  metadata {
+    name      = "tekton-dashboard-ingress"
+    namespace = "tekton-pipelines"
+    annotations = {
+      "kubernetes.io/ingress.class"              = "nginx"
+      "nginx.ingress.kubernetes.io/ssl-redirect" = "true"
+    }
+  }
+  spec {
+    rule {
+      host = "dashboard.tekton.iskprinter.com"
+      http {
+        path {
+          path = "/"
+          backend {
+            service_name = "tekton-dashboard"
+            service_port = 9097
           }
         }
+      }
+    }
+    tls {
+      hosts = [
+        "dashboard.tekton.iskprinter.com"
       ]
-      tls = [
-        {
-          hosts = [
-            "dashboard.tekton.iskprinter.com"
-          ]
-          secretName = "tls-iskprinter-com"
-        }
-      ]
+      secret_name = "tls-dashboard-tekton-iskprinter-com"
     }
   }
 }
@@ -120,150 +89,119 @@ resource "kubernetes_manifest" "tekton_dashboard_ingress" {
 # Service account and credentials
 # Based on https://github.com/sdaschner/tekton-argocd-example
 
-resource "kubernetes_manifest" "git_bot_ssh_key" {
-  manifest = {
-    apiVersion = "v1"
-    kind       = "Secret"
-    type       = "kubernetes.io/ssh-auth"
-    metadata = {
-      name      = "git-bot-ssh-key"
-      namespace = "tekton-pipelines"
-      annotations = {
-        "tekton.dev/git-0" = "github.com"
-      }
+resource "kubernetes_secret" "git_bot_ssh_key" {
+  type = "kubernetes.io/ssh-auth"
+  metadata {
+    name      = "git-bot-ssh-key"
+    namespace = "tekton-pipelines"
+    annotations = {
+      "tekton.dev/git-0" = "github.com"
     }
-    data = {
-      ssh-privatekey = var.git_bot_ssh_key_base64
-    }
+  }
+  data = {
+    ssh-privatekey = var.git_bot_ssh_key_base64
   }
 }
 
-resource "kubernetes_manifest" "git_bot_container_registry_access_token" {
-  manifest = {
-    apiVersion = "v1"
-    kind       = "Secret"
-    type       = "kubernetes.io/basic-auth"
-    metadata = {
-      name      = "git-bot-container-registry-credentials"
-      namespace = "tekton-pipelines"
-      annotations = {
-        "tekton.dev/docker-0" = "hub.docker.com"
-      }
+resource "kubernetes_secret" "git_bot_container_registry_access_token" {
+  type = "kubernetes.io/basic-auth"
+  metadata {
+    name      = "git-bot-container-registry-credentials"
+    namespace = "tekton-pipelines"
+    annotations = {
+      "tekton.dev/docker-0" = "hub.docker.com"
     }
-    data = {
-      username = base64encode(var.git_bot_container_registry_username)
-      password = base64encode(var.git_bot_container_registry_access_token)
-    }
+  }
+  data = {
+    username = base64encode(var.git_bot_container_registry_username)
+    password = base64encode(var.git_bot_container_registry_access_token)
   }
 }
 
-resource "kubernetes_manifest" "git_bot_service_account" {
-  manifest = {
-    apiVersion = "v1"
-    kind       = "ServiceAccount"
-    metadata = {
-      name      = "git-bot"
-      namespace = "tekton-pipelines"
-    }
-    secrets = [
-      {
-        name = "git-bot-container-registry-credentials"
-      },
-      {
-        name = "git-bot-ssh-key"
-      },
-      {}
+resource "kubernetes_service_account" "git_bot_service_account" {
+  metadata {
+    name      = "git-bot"
+    namespace = "tekton-pipelines"
+  }
+  secret {
+    name = "git-bot-container-registry-credentials"
+  }
+  secret {
+    name = "git-bot-ssh-key"
+  }
+}
+
+resource "kubernetes_role" "git_bot_role" {
+  metadata {
+    name      = "git-bot-role"
+    namespace = "tekton-pipelines"
+  }
+  rule {
+    api_groups = ["serving.knative.dev"]
+    resources  = ["*"]
+    verbs      = ["*"]
+  }
+  rule {
+    api_groups = ["eventing.knative.dev"]
+    resources  = ["*"]
+    verbs      = ["*"]
+  }
+  rule {
+    api_groups = ["sources.eventing.knative.dev"]
+    resources  = ["*"]
+    verbs      = ["*"]
+  }
+  rule {
+    api_groups = [""]
+    resources = [
+      "pods",
+      "services",
+      "endpoints",
+      "configmaps",
+      "secrets",
     ]
+    verbs = ["*"]
   }
-  computed_fields = [
-    "secrets[2]"
-  ]
-}
-
-resource "kubernetes_manifest" "git_bot_role" {
-  manifest = {
-    apiVersion = "rbac.authorization.k8s.io/v1"
-    kind       = "Role"
-    metadata = {
-      name      = "git-bot-role"
-      namespace = "tekton-pipelines"
-    }
-    rules = [
-      {
-        apiGroups = ["serving.knative.dev"]
-        resources = ["*"]
-        verbs     = ["*"]
-      },
-      {
-        apiGroups = ["eventing.knative.dev"]
-        resources = ["*"]
-        verbs     = ["*"]
-      },
-      {
-        apiGroups = ["sources.eventing.knative.dev"]
-        resources = ["*"]
-        verbs     = ["*"]
-      },
-      {
-        apiGroups = [""]
-        resources = [
-          "pods",
-          "services",
-          "endpoints",
-          "configmaps",
-          "secrets",
-        ]
-        verbs = ["*"]
-      },
-      {
-        apiGroups = ["apps"]
-        resources = [
-          "deployments",
-          "daemonsets",
-          "replicasets",
-          "statefulsets",
-        ]
-        verbs = ["*"]
-      },
-      {
-        apiGroups = [""]
-        resources = ["pods"]
-        verbs     = ["get"]
-      },
-      {
-        apiGroups = ["apps"]
-        resources = [
-          "replicasets"
-        ]
-        verbs = [
-          "get"
-        ]
-      }
+  rule {
+    api_groups = ["apps"]
+    resources = [
+      "deployments",
+      "daemonsets",
+      "replicasets",
+      "statefulsets",
+    ]
+    verbs = ["*"]
+  }
+  rule {
+    api_groups = [""]
+    resources  = ["pods"]
+    verbs      = ["get"]
+  }
+  rule {
+    api_groups = ["apps"]
+    resources = [
+      "replicasets"
+    ]
+    verbs = [
+      "get"
     ]
   }
 }
 
-resource "kubernetes_manifest" "git_bot_role_binding" {
-
-  manifest = {
-    apiVersion = "rbac.authorization.k8s.io/v1"
-    kind       = "RoleBinding"
-    metadata = {
-      name      = "git-bot-role-binding"
-      namespace = "tekton-pipelines"
-    }
-    roleRef = {
-      kind     = "Role"
-      name     = "git-bot-role"
-      apiGroup = "rbac.authorization.k8s.io"
-    }
-    subjects = [
-      {
-        kind      = "ServiceAccount"
-        name      = "git-bot"
-        namespace = "tekton-pipelines"
-      }
-    ]
+resource "kubernetes_role_binding" "git_bot_role_binding" {
+  metadata {
+    name      = "git-bot-role-binding"
+    namespace = "tekton-pipelines"
+  }
+  role_ref {
+    kind      = "Role"
+    name      = "git-bot-role"
+    api_group = "rbac.authorization.k8s.io"
+  }
+  subject {
+    kind      = "ServiceAccount"
+    name      = "git-bot"
+    namespace = "tekton-pipelines"
   }
 }
 
@@ -300,125 +238,92 @@ resource "kubectl_manifest" "tekton_triggers_interceptors" {
   wait_for_rollout = false
 }
 
-resource "kubernetes_manifest" "tekon_trigger_service_account" {
-  manifest = {
-    kind       = "ServiceAccount"
-    apiVersion = "v1"
-    metadata = {
-      name      = "tekton-github-triggers"
-      namespace = "tekton-pipelines"
-    }
-    secrets = [
-      {
-        name = "github-trigger-secret"
-      },
-      {}
-    ]
+resource "kubernetes_service_account" "tekon_trigger_service_account" {
+  metadata {
+    name      = "tekton-github-triggers"
+    namespace = "tekton-pipelines"
   }
-  computed_fields = ["secrets[1]"]
+  secret {
+    name = "github-trigger-secret"
+  }
 }
 
-resource "kubernetes_manifest" "tekon_trigger_role" {
+resource "kubernetes_role" "tekon_trigger_role" {
   depends_on = [
     kubectl_manifest.tekton_triggers,
     kubectl_manifest.tekton_triggers_interceptors
   ]
-  manifest = {
-    kind       = "Role"
-    apiVersion = "rbac.authorization.k8s.io/v1"
-    metadata = {
-      name      = "tekton-github-triggers"
-      namespace = "tekton-pipelines"
-    }
-    rules = [
-      {
-        # Permissions for every EventListener deployment to function
-        apiGroups = ["triggers.tekton.dev"]
-        resources = ["eventlisteners", "triggerbindings", "triggertemplates", "triggers"]
-        verbs     = ["get", "list", "watch"]
-      },
-      {
-        # secrets are only needed for Github/Gitlab interceptors, serviceaccounts only for per trigger authorization
-        apiGroups = [""]
-        resources = ["configmaps", "secrets", "serviceaccounts"]
-        verbs     = ["get", "list", "watch"]
-      },
-      {
-        # Permissions to create resources in associated TriggerTemplates
-        apiGroups = ["tekton.dev"]
-        resources = ["pipelineruns", "pipelineresources", "taskruns"]
-        verbs     = ["create"]
-      }
-    ]
+  metadata {
+    name      = "tekton-github-triggers"
+    namespace = "tekton-pipelines"
+  }
+  rule {
+    # Permissions for every EventListener deployment to function
+    api_groups = ["triggers.tekton.dev"]
+    resources  = ["eventlisteners", "triggerbindings", "triggertemplates", "triggers"]
+    verbs      = ["get", "list", "watch"]
+  }
+  rule {
+    # secrets are only needed for Github/Gitlab interceptors, serviceaccounts only for per trigger authorization
+    api_groups = [""]
+    resources  = ["configmaps", "secrets", "serviceaccounts"]
+    verbs      = ["get", "list", "watch"]
+  }
+  rule {
+    # Permissions to create resources in associated TriggerTemplates
+    api_groups = ["tekton.dev"]
+    resources  = ["pipelineruns", "pipelineresources", "taskruns"]
+    verbs      = ["create"]
   }
 }
 
-resource "kubernetes_manifest" "tekon_trigger_role_binding" {
-  manifest = {
-    kind       = "RoleBinding"
-    apiVersion = "rbac.authorization.k8s.io/v1"
-    metadata = {
-      name      = "tekton-triggers-github-binding"
-      namespace = "tekton-pipelines"
-    }
-    subjects = [
-      {
-        kind = "ServiceAccount"
-        name = "tekton-github-triggers"
-      }
-    ]
-    roleRef = {
-      apiGroup = "rbac.authorization.k8s.io"
-      kind     = "Role"
-      name     = "tekton-github-triggers"
-    }
+resource "kubernetes_role_binding" "tekon_trigger_role_binding" {
+  metadata {
+    name      = "tekton-triggers-github-binding"
+    namespace = "tekton-pipelines"
+  }
+  subject {
+    kind = "ServiceAccount"
+    name = "tekton-github-triggers"
+  }
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "Role"
+    name      = "tekton-github-triggers"
   }
 }
 
-
-resource "kubernetes_manifest" "tekon_trigger_cluster_role" {
+resource "kubernetes_cluster_role" "tekon_trigger_cluster_role" {
   depends_on = [
     kubectl_manifest.tekton_triggers,
     kubectl_manifest.tekton_triggers_interceptors
   ]
-  manifest = {
-    kind       = "ClusterRole"
-    apiVersion = "rbac.authorization.k8s.io/v1"
-    metadata = {
-      name = "tekton-github-triggers"
-    }
-    rules = [
-      {
-        # EventListeners need to be able to fetch any clustertriggerbindings
-        apiGroups = ["triggers.tekton.dev"]
-        resources = ["clustertriggerbindings"]
-        verbs     = ["get", "list", "watch"]
-      }
-    ]
+  metadata {
+    name = "tekton-github-triggers"
+  }
+  rule {
+    # EventListeners need to be able to fetch any clustertriggerbindings
+    api_groups = ["triggers.tekton.dev"]
+    resources  = ["clustertriggerbindings"]
+    verbs      = ["get", "list", "watch"]
   }
 }
 
-resource "kubernetes_manifest" "tekon_trigger_cluster_role_binding" {
-  manifest = {
-
-
-    kind       = "ClusterRoleBinding"
-    apiVersion = "rbac.authorization.k8s.io/v1"
-    metadata = {
-      name = "tekton-triggers-example-clusterbinding"
-    }
-    subjects = [
-      {
-        kind      = "ServiceAccount"
-        name      = "tekton-github-triggers"
-        namespace = "tekton-pipelines"
-      }
-    ]
-    roleRef = {
-      apiGroup = "rbac.authorization.k8s.io"
-      kind     = "ClusterRole"
-      name     = "tekton-github-triggers"
-    }
+resource "kubernetes_cluster_role_binding" "tekon_trigger_cluster_role_binding" {
+  metadata {
+    name        = "tekton-triggers-example-clusterbinding"
+    annotations = {}
+    labels      = {}
+  }
+  subject {
+    kind      = "ServiceAccount"
+    name      = "tekton-github-triggers"
+    namespace = "tekton-pipelines"
+  }
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "ClusterRole"
+    name      = "tekton-github-triggers"
   }
 }
 
@@ -430,22 +335,24 @@ resource "random_password" "github_trigger_secret" {
   min_upper   = 1
 }
 
-resource "kubernetes_manifest" "github_trigger_secret" {
-  manifest = {
-    apiVersion = "v1"
-    kind       = "Secret"
-    type       = "Opaque"
-    metadata = {
-      name      = "github-trigger-secret"
-      namespace = "tekton-pipelines"
-    }
-    data = {
-      secretToken = base64encode(random_password.github_trigger_secret.result)
-    }
+resource "kubernetes_secret" "github_trigger_secret" {
+  type = "Opaque"
+  metadata {
+    name        = "github-trigger-secret"
+    namespace   = "tekton-pipelines"
+    annotations = {}
+    labels      = {}
+  }
+  data = {
+    secretToken = base64encode(random_password.github_trigger_secret.result)
   }
 }
 
 resource "kubernetes_manifest" "trigger_template_build_deploy" {
+  depends_on = [
+    kubectl_manifest.tekton_triggers,
+    kubectl_manifest.tekton_triggers_interceptors
+  ]
   manifest = {
     apiVersion = "triggers.tekton.dev/v1alpha1"
     kind       = "TriggerTemplate"
@@ -508,6 +415,10 @@ resource "kubernetes_manifest" "trigger_template_build_deploy" {
 }
 
 resource "kubernetes_manifest" "trigger_binding_build_deploy" {
+  depends_on = [
+    kubectl_manifest.tekton_triggers,
+    kubectl_manifest.tekton_triggers_interceptors
+  ]
   manifest = {
     apiVersion = "triggers.tekton.dev/v1alpha1"
     kind       = "TriggerBinding"

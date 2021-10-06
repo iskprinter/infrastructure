@@ -4,25 +4,6 @@ locals {
   release_name = "neo4j"
 }
 
-provider "helm" {
-  kubernetes {
-    host                   = "https://${var.cluster_endpoint}"
-    client_certificate     = var.cluster_client_certificate
-    client_key             = var.cluster_client_key
-    cluster_ca_certificate = var.cluster_ca_certificate
-  }
-}
-
-provider "kubernetes" {
-  host                   = "https://${var.cluster_endpoint}"
-  client_certificate     = var.cluster_client_certificate
-  client_key             = var.cluster_client_key
-  cluster_ca_certificate = var.cluster_ca_certificate
-  experiments {
-    manifest_resource = true
-  }
-}
-
 resource "random_password" "neo4j" {
   length      = 16
   min_lower   = 1
@@ -31,18 +12,14 @@ resource "random_password" "neo4j" {
   min_upper   = 1
 }
 
-resource "kubernetes_manifest" "neo4j_password" {
-  manifest = {
-    apiVersion = "v1"
-    kind       = "Secret"
-    type       = "Opaque"
-    metadata = {
-      name      = "neo4j-password"
-      namespace = local.namespace
-    }
-    data = {
-      secret = base64encode(random_password.neo4j.result)
-    }
+resource "kubernetes_secret" "neo4j_password" {
+  metadata {
+    name      = "neo4j-password"
+    namespace = local.namespace
+  }
+  type = "Opaque"
+  data = {
+    secret = base64encode(random_password.neo4j.result)
   }
 }
 

@@ -71,3 +71,10 @@ variable "git_bot_container_registry_access_token" {
   type      = string
   sensitive = true
 }
+
+# Certificates
+
+variable "cert_manager_version" {
+  type    = string
+  default = "1.5.0"
+}
