@@ -49,6 +49,7 @@ module "cicd" {
   cluster_client_certificate              = module.cluster.cluster_client_certificate
   cluster_client_key                      = module.cluster.cluster_client_key
   cluster_endpoint                        = module.cluster.cluster_endpoint
+  dns_managed_zone_name                   = module.dns.managed_zone_name
   git_bot_ssh_key_base64                  = var.git_bot_ssh_key_base64
   git_bot_container_registry_username     = var.git_bot_container_registry_username
   git_bot_container_registry_access_token = var.git_bot_container_registry_access_token

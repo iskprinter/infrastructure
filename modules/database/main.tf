@@ -19,7 +19,7 @@ resource "kubernetes_secret" "neo4j_password" {
   }
   type = "Opaque"
   data = {
-    secret = base64encode(random_password.neo4j.result)
+    secret = random_password.neo4j.result
   }
 }
 
