@@ -1,5 +1,5 @@
 locals {
-  namespace   = "cert-manager"
+  namespace = "cert-manager"
 }
 
 resource "google_service_account" "cert_manager_service_account" {

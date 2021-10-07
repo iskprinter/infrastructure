@@ -35,119 +35,46 @@ resource "kubectl_manifest" "tekton_dashboard" {
 # Service account and credentials
 # Based on https://github.com/sdaschner/tekton-argocd-example
 
-resource "kubernetes_secret" "git_bot_ssh_key" {
+resource "kubernetes_service_account" "cicd_bot_service_account" {
+  metadata {
+    name      = "cicd-bot"
+    namespace = "tekton-pipelines"
+  }
+  secret {
+    name = "cicd-bot-container-registry-credentials"
+  }
+  secret {
+    name = "cicd-bot-ssh-key"
+  }
+}
+
+resource "kubernetes_secret" "cicd_bot_ssh_key" {
   type = "kubernetes.io/ssh-auth"
   metadata {
-    name      = "git-bot-ssh-key"
+    name      = "cicd-bot-ssh-key"
     namespace = "tekton-pipelines"
     annotations = {
       "tekton.dev/git-0" = "github.com"
     }
   }
-  data = {
-    ssh-privatekey = var.git_bot_ssh_key_base64
+  binary_data = {
+    ssh-privatekey = var.cicd_bot_ssh_private_key
+    known_hosts    = var.github_known_hosts
   }
 }
 
-resource "kubernetes_secret" "git_bot_container_registry_access_token" {
+resource "kubernetes_secret" "cicd_bot_container_registry_access_token" {
   type = "kubernetes.io/basic-auth"
   metadata {
-    name      = "git-bot-container-registry-credentials"
+    name      = "cicd-bot-container-registry-credentials"
     namespace = "tekton-pipelines"
     annotations = {
       "tekton.dev/docker-0" = "hub.docker.com"
     }
   }
-  data = {
-    username = base64encode(var.git_bot_container_registry_username)
-    password = base64encode(var.git_bot_container_registry_access_token)
-  }
-}
-
-resource "kubernetes_service_account" "git_bot_service_account" {
-  metadata {
-    name      = "git-bot"
-    namespace = "tekton-pipelines"
-  }
-  secret {
-    name = "git-bot-container-registry-credentials"
-  }
-  secret {
-    name = "git-bot-ssh-key"
-  }
-}
-
-resource "kubernetes_role" "git_bot_role" {
-  metadata {
-    name      = "git-bot-role"
-    namespace = "tekton-pipelines"
-  }
-  rule {
-    api_groups = ["serving.knative.dev"]
-    resources  = ["*"]
-    verbs      = ["*"]
-  }
-  rule {
-    api_groups = ["eventing.knative.dev"]
-    resources  = ["*"]
-    verbs      = ["*"]
-  }
-  rule {
-    api_groups = ["sources.eventing.knative.dev"]
-    resources  = ["*"]
-    verbs      = ["*"]
-  }
-  rule {
-    api_groups = [""]
-    resources = [
-      "pods",
-      "services",
-      "endpoints",
-      "configmaps",
-      "secrets",
-    ]
-    verbs = ["*"]
-  }
-  rule {
-    api_groups = ["apps"]
-    resources = [
-      "deployments",
-      "daemonsets",
-      "replicasets",
-      "statefulsets",
-    ]
-    verbs = ["*"]
-  }
-  rule {
-    api_groups = [""]
-    resources  = ["pods"]
-    verbs      = ["get"]
-  }
-  rule {
-    api_groups = ["apps"]
-    resources = [
-      "replicasets"
-    ]
-    verbs = [
-      "get"
-    ]
-  }
-}
-
-resource "kubernetes_role_binding" "git_bot_role_binding" {
-  metadata {
-    name      = "git-bot-role-binding"
-    namespace = "tekton-pipelines"
-  }
-  role_ref {
-    kind      = "Role"
-    name      = "git-bot-role"
-    api_group = "rbac.authorization.k8s.io"
-  }
-  subject {
-    kind      = "ServiceAccount"
-    name      = "git-bot"
-    namespace = "tekton-pipelines"
+  binary_data = {
+    username = base64encode(var.cicd_bot_container_registry_username)
+    password = base64encode(var.cicd_bot_container_registry_access_token)
   }
 }
 
@@ -184,98 +111,92 @@ resource "kubectl_manifest" "tekton_triggers_interceptors" {
   wait_for_rollout = false
 }
 
-resource "kubernetes_service_account" "tekon_trigger_service_account" {
-  metadata {
-    name      = "tekton-github-triggers"
-    namespace = "tekton-pipelines"
-  }
-  secret {
-    name = "github-trigger-secret"
-  }
-}
-
-resource "kubernetes_role" "tekon_trigger_role" {
+# Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
+resource "kubernetes_role" "cicd_bot_role" {
   depends_on = [
     kubectl_manifest.tekton_triggers,
     kubectl_manifest.tekton_triggers_interceptors
   ]
   metadata {
-    name      = "tekton-github-triggers"
     namespace = "tekton-pipelines"
+    name      = "cicd-bot-role"
   }
+  # EventListeners need to be able to fetch all namespaced resources
   rule {
-    # Permissions for every EventListener deployment to function
     api_groups = ["triggers.tekton.dev"]
     resources  = ["eventlisteners", "triggerbindings", "triggertemplates", "triggers"]
     verbs      = ["get", "list", "watch"]
   }
   rule {
-    # secrets are only needed for Github/Gitlab interceptors, serviceaccounts only for per trigger authorization
     api_groups = [""]
-    resources  = ["configmaps", "secrets", "serviceaccounts"]
-    verbs      = ["get", "list", "watch"]
+    # configmaps is needed for updating logging config
+    resources = ["configmaps"]
+    verbs     = ["get", "list", "watch"]
   }
+  # Permissions to create resources in associated TriggerTemplates
   rule {
-    # Permissions to create resources in associated TriggerTemplates
     api_groups = ["tekton.dev"]
     resources  = ["pipelineruns", "pipelineresources", "taskruns"]
     verbs      = ["create"]
   }
+  rule {
+    api_groups = [""]
+    resources  = ["serviceaccounts"]
+    verbs      = ["impersonate"]
+  }
+  rule {
+    api_groups     = ["policy"]
+    resources      = ["podsecuritypolicies"]
+    resource_names = ["tekton-triggers"]
+    verbs          = ["use"]
+  }
 }
 
-resource "kubernetes_role_binding" "tekon_trigger_role_binding" {
+# Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
+resource "kubernetes_role_binding" "tekton_triggers_role_binding" {
   metadata {
-    name      = "tekton-triggers-github-binding"
     namespace = "tekton-pipelines"
+    name      = "cicd-bot-role-binding"
   }
   subject {
     kind      = "ServiceAccount"
-    name      = "tekton-github-triggers"
     namespace = "tekton-pipelines"
+    name      = "cicd-bot"
   }
   role_ref {
     api_group = "rbac.authorization.k8s.io"
     kind      = "Role"
-    name      = "tekton-github-triggers"
+    name      = "cicd-bot-role"
   }
 }
 
-resource "kubernetes_cluster_role" "tekon_trigger_cluster_role" {
-  depends_on = [
-    kubectl_manifest.tekton_triggers,
-    kubectl_manifest.tekton_triggers_interceptors
-  ]
+# Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
+resource "kubernetes_cluster_role" "tekton_triggers_sa_cluster_role" {
   metadata {
-    name = "tekton-github-triggers"
+    name = "cicd-bot-cluster-role"
   }
   rule {
-    # EventListeners need to be able to fetch any clustertriggerbindings
+    # EventListeners need to be able to fetch any clustertriggerbindings, and clusterinterceptors
     api_groups = ["triggers.tekton.dev"]
-    resources  = ["clustertriggerbindings"]
+    resources  = ["clustertriggerbindings", "clusterinterceptors"]
     verbs      = ["get", "list", "watch"]
   }
-  rule {
-    api_groups = ["triggers.tekton.dev"]
-    resources  = ["clusterinterceptors"]
-    verbs      = ["list", "watch"]
-  }
 }
 
-resource "kubernetes_cluster_role_binding" "tekon_trigger_cluster_role_binding" {
+# Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
+resource "kubernetes_cluster_role_binding" "tekton_triggers_sa_cluster_role_binding" {
   metadata {
-    name        = "tekton-triggers-example-clusterbinding"
-    annotations = {}
-    labels      = {}
+    name = "cicd-bot-cluster-role-binding"
   }
   subject {
     kind      = "ServiceAccount"
-    name      = "tekton-github-triggers"
+    name      = "cicd-bot"
     namespace = "tekton-pipelines"
   }
   role_ref {
     api_group = "rbac.authorization.k8s.io"
     kind      = "ClusterRole"
-    name      = "tekton-github-triggers"
+    name      = "cicd-bot-cluster-role"
   }
 }
 
@@ -287,118 +208,31 @@ resource "random_password" "github_trigger_secret" {
   min_upper   = 1
 }
 
+# Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/v1beta1/github/secret.yaml
 resource "kubernetes_secret" "github_trigger_secret" {
   type = "Opaque"
   metadata {
-    name        = "github-trigger-secret"
+    name        = "github-secret"
     namespace   = "tekton-pipelines"
     annotations = {}
     labels      = {}
   }
-  data = {
-    secretToken = random_password.github_trigger_secret.result
+  binary_data = {
+    secretToken = base64encode(random_password.github_trigger_secret.result)
   }
 }
 
-resource "kubernetes_manifest" "trigger_template_build_deploy" {
+# Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/v1beta1/github/github-eventlistener-interceptor.yaml
+resource "kubectl_manifest" "github_event_listener" {
   depends_on = [
     kubectl_manifest.tekton_triggers,
     kubectl_manifest.tekton_triggers_interceptors
   ]
-  manifest = {
-    apiVersion = "triggers.tekton.dev/v1alpha1"
-    kind       = "TriggerTemplate"
-    metadata = {
-      name      = "build-deploy-template"
-      namespace = "tekton-pipelines"
-    }
-    spec = {
-      params = [
-        {
-          name        = "buildRevision"
-          description = "The Git commit revision"
-        }
-      ]
-      resourcetemplates = [
-        {
-          apiVersion = "tekton.dev/v1beta1"
-          kind       = "PipelineRun"
-          metadata = {
-            generateName = "build-deploy-"
-          }
-          spec = {
-            pipelineRef = {
-              name = "build-deploy"
-            }
-            serviceAccountName = "git-bot"
-            params = [
-              {
-                name  = "buildRevision"
-                value = "$(tt.params.buildRevision)"
-              },
-              {
-                name  = "appGitUrl"
-                value = "git@github.com:example/app.git"
-              },
-              {
-                name  = "configGitUrl"
-                value = "git@github.com:example/app-config.git"
-              },
-              {
-                name  = "appImage"
-                value = "docker.example.com/app"
-              }
-            ]
-            workspaces = [
-              {
-                name     = "app-source"
-                emptyDir = {}
-              },
-              {
-                name     = "config-source"
-                emptyDir = {}
-              }
-            ]
-          }
-        }
-      ]
-    }
-  }
-}
-
-resource "kubernetes_manifest" "trigger_binding_build_deploy" {
-  depends_on = [
-    kubectl_manifest.tekton_triggers,
-    kubectl_manifest.tekton_triggers_interceptors
-  ]
-  manifest = {
-    apiVersion = "triggers.tekton.dev/v1alpha1"
-    kind       = "TriggerBinding"
-    metadata = {
-      name      = "build-deploy-binding"
-      namespace = "tekton-pipelines"
-    }
-    spec = {
-      params = [
-        {
-          name  = "buildRevision"
-          value = "$(body.head_commit.id)"
-        }
-      ]
-    }
-  }
-}
-
-resource "kubernetes_manifest" "github_trigger_event_listener" {
-  depends_on = [
-    kubectl_manifest.tekton_triggers,
-    kubectl_manifest.tekton_triggers_interceptors
-  ]
-  manifest = {
-    apiVersion = "triggers.tekton.dev/v1alpha1"
+  yaml_body = yamlencode({
+    apiVersion = "triggers.tekton.dev/v1beta1"
     kind       = "EventListener"
     metadata = {
-      name      = "github-listener-interceptor"
+      name      = "github-event-listener"
       namespace = "tekton-pipelines"
       finalizers = [
         "eventlisteners.triggers.tekton.dev",
@@ -406,60 +240,421 @@ resource "kubernetes_manifest" "github_trigger_event_listener" {
     }
     spec = {
       namespaceSelector  = {}
-      resources          = {}
-      serviceAccountName = "tekton-github-triggers"
+      serviceAccountName = "cicd-bot"
       triggers = [
         {
-          name = "github-listener"
-          bindings = [
-            {
-              kind = "TriggerBinding"
-              ref  = "build-deploy-binding"
-            },
-          ]
-          interceptors = [
-            {
-              params = [
-                {
-                  name = "secretRef"
-                  value = {
-                    secretKey  = "secretToken"
-                    secretName = "github-trigger-secret"
+          triggerRef = "github-trigger"
+        }
+      ]
+      resources = {
+        kubernetesResource = {
+          spec = {
+            template = {
+              spec = {
+                serviceAccountName = "cicd-bot"
+                containers = [
+                  {
+                    name = ""
+                    resources = {
+                      requests = {
+                        memory = "64Mi"
+                        # cpu    = "250m"
+                      }
+                      limits = {
+                        memory = "128Mi"
+                        # cpu    = "500m"
+                      }
+                    }
                   }
-                },
-                {
-                  name = "eventTypes"
-                  value = [
-                    "push",
-                  ]
-                },
-              ]
-              ref = {
-                kind = "ClusterInterceptor"
-                name = "github"
-              }
-            },
-            {
-              params = [
-                {
-                  name  = "filter"
-                  value = "body.ref == 'refs/heads/main'"
-                }
-              ]
-              ref = {
-                kind = "ClusterInterceptor"
-                name = "cel"
+                ]
               }
             }
+          }
+        }
+      }
+    }
+  })
+}
+
+# Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/v1beta1/github/github-eventlistener-interceptor.yaml
+resource "kubectl_manifest" "github_trigger" {
+  depends_on = [
+    kubectl_manifest.tekton_triggers,
+    kubectl_manifest.tekton_triggers_interceptors
+  ]
+  yaml_body = yamlencode({
+    apiVersion = "triggers.tekton.dev/v1beta1"
+    kind       = "Trigger"
+    metadata = {
+      namespace = "tekton-pipelines"
+      name      = "github-trigger"
+    }
+    spec = {
+      interceptors = [
+        {
+          ref = {
+            kind = "ClusterInterceptor"
+            name = "github"
+          }
+          params = [
+            {
+              name = "secretRef"
+              value = {
+                secretName = "github-secret"
+                secretKey  = "secretToken"
+              }
+            },
+            {
+              name = "eventTypes"
+              value = [
+                "pull_request"
+                # "push",
+              ]
+            },
           ]
-          template = {
-            ref = "build-deploy-template"
+        },
+        {
+          name = "only when PRs are opened"
+          ref = {
+            kind = "ClusterInterceptor"
+            name = "cel"
+          }
+          params = [
+            {
+              name = "filter"
+              # value = "body.ref == 'refs/heads/main'"
+              value = "body.action in ['opened', 'synchronize', 'reopened']"
+            }
+          ]
+        }
+      ]
+      bindings = [
+        {
+          kind = "TriggerBinding"
+          ref  = "github-trigger-binding"
+        }
+      ]
+      template = {
+        ref = "github-trigger-template"
+      }
+    }
+  })
+}
+
+# Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/v1beta1/github/github-eventlistener-interceptor.yaml
+resource "kubectl_manifest" "github_trigger_binding" {
+  depends_on = [
+    kubectl_manifest.tekton_triggers,
+    kubectl_manifest.tekton_triggers_interceptors
+  ]
+  yaml_body = yamlencode({
+    apiVersion = "triggers.tekton.dev/v1beta1"
+    kind       = "TriggerBinding"
+    metadata = {
+      namespace = "tekton-pipelines"
+      name      = "github-trigger-binding"
+      # name      = "build-deploy-binding"
+    }
+    spec = {
+      params = [
+        # {
+        #   name  = "buildRevision"
+        #   value = "$(body.head_commit.id)"
+        # },
+        {
+          name  = "gitrevision"
+          value = "$(body.pull_request.head.sha)"
+        },
+        {
+          name  = "gitrepositoryurl"
+          value = "$(body.repository.ssh_url)"
+        }
+      ]
+    }
+  })
+}
+
+# Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/v1beta1/github/github-eventlistener-interceptor.yaml
+resource "kubectl_manifest" "github_trigger_template" {
+  depends_on = [
+    kubectl_manifest.tekton_triggers,
+    kubectl_manifest.tekton_triggers_interceptors
+  ]
+  yaml_body = yamlencode({
+    apiVersion = "triggers.tekton.dev/v1beta1"
+    kind       = "TriggerTemplate"
+    metadata = {
+      namespace = "tekton-pipelines"
+      name      = "github-trigger-template"
+    }
+    spec = {
+      params = [
+        {
+          # name        = "buildRevision"
+          name = "gitrevision"
+          # description = "The Git commit revision"
+        },
+        {
+          name = "gitrepositoryurl"
+        }
+      ]
+      resourcetemplates = [
+        {
+          # apiVersion = "tekton.dev/v1beta1"
+          # kind       = "PipelineRun"
+          apiVersion = "tekton.dev/v1alpha1"
+          kind       = "TaskRun"
+          metadata = {
+            generateName = "github-pipeline-run-"
+          }
+          spec = {
+            serviceAccountName = "cicd-bot"
+            inputs = {
+              resources = [
+                {
+                  name = "source"
+                  resourceSpec = {
+                    type = "git"
+                    params = [
+                      {
+                        name  = "revision"
+                        value = "$(tt.params.gitrevision)"
+                      },
+                      {
+                        name  = "url"
+                        value = "$(tt.params.gitrepositoryurl)"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+            taskSpec = {
+              inputs = {
+                resources = [
+                  {
+                    name = "source"
+                    type = "git"
+                  }
+                ]
+              }
+              steps = [
+                {
+                  image  = "ubuntu"
+                  script = <<-EOF
+                    #! /bin/bash
+                    ls -al $(inputs.resources.source.path)
+                  EOF
+                }
+              ]
+            }
+            # pipelineRef = {
+            #   name = "github-pipeline"
+            # }
+            # workspaces = [
+            #   {
+            #     name     = "app-source"
+            #     emptyDir = {}
+            #   },
+            #   {
+            #     name     = "config-source"
+            #     emptyDir = {}
+            #   }
+            # ]
           }
         }
       ]
     }
-  }
+  })
 }
+
+# # Based on the example at https://tekton.dev/vault/pipelines-v0.26.0/pipelines/#pipelines
+# resource "kubectl_manifest" "github_pipeline" {
+#   depends_on = [
+#     kubectl_manifest.tekton_triggers,
+#     kubectl_manifest.tekton_triggers_interceptors
+#   ]
+#   yaml_body = yamlencode({
+#     apiVersion = "tekton.dev/v1beta1"
+#     kind       = "Pipeline"
+#     metadata = {
+#       namespace = "tekton-pipelines"
+#       name      = "github-pipeline"
+#     }
+#     spec = {
+#       params = [
+#         {
+#           name        = "revision"
+#           type        = "string"
+#           description = "The git revision of the repo to build."
+#           default     = "HEAD"
+#         },
+#         {
+#           name        = "url"
+#           type        = "string"
+#           description = "The SSH URL of the repo to build."
+#         }
+#       ]
+#       workspaces = [
+#         {
+#           name = "pipeline-ws1"
+#         }
+#       ]
+#       tasks = [
+#         {
+#           name = "clone-commit"
+#           params = [
+#             {
+#               name  = "revision"
+#               value = "$(params.revision)"
+#             },
+#             {
+#               name  = "url"
+#               value = "$(params.url)"
+#             }
+#           ]
+#           taskSpec = {
+#             metadata = {}
+#             params = [
+#               {
+#                 name = "revision"
+#                 type = "string"
+#               },
+#               {
+#                 name = "url"
+#                 type = "string"
+#               }
+#             ]
+#             steps = [
+#               {
+#                 image     = "ubuntu"
+#                 name      = "check-commit"
+#                 resources = {}
+#                 script    = <<-EOF
+#                   ls -al
+#                   git rev-parse --verify --short
+#                   # git init
+#                   # git add remote origin $(params.url)
+#                   # git checkout $(params.revision)
+#                   # git reset --hard
+#                 EOF
+#               }
+#             ]
+#           }
+#           workspaces = [
+#             {
+#               name      = "src"
+#               workspace = "pipeline-ws1"
+#             }
+#           ]
+#         }
+#       ]
+#     }
+#   })
+# }
+
+# Based on the example at https://github.com/tektoncd/pipeline/blob/v0.28.1/examples/v1beta1/pipelineruns/demo-optional-resources.yaml
+# resource "kubectl_manifest" "github_pipeline" {
+#   depends_on = [
+#     kubectl_manifest.tekton_triggers,
+#     kubectl_manifest.tekton_triggers_interceptors
+#   ]
+#   yaml_body = yamlencode({
+#     apiVersion = "tekton.dev/v1beta1"
+#     kind       = "Pipeline"
+#     metadata = {
+#       namespace = "tekton-pipelines"
+#       name      = "github-pipeline"
+#     }
+#     spec = {
+#       params = [
+#         {
+#           name        = "workspaceSize"
+#           type        = "string"
+#           description = "The size of the workspace to reserve. Deleted after pipeline run."
+#           default     = "1Gi"
+#         }
+#       ]
+#       resources = [
+#         {
+#           name = "source"  # Must match the name in the TriggerTemplate above.
+#           type = "git"
+#         }
+#       ]
+#       volumes = [
+#         {
+#           name = "docker-socket"
+#           hostPath = {
+#             path = "/var/run/docker.sock"
+#             type = "Socket"
+#           }
+#         }
+#       ]
+#       # workspaces = [
+#       #   {
+#       #     name = "default-workspace"
+#       #     volumeClaimTemplate = {
+#       #       spec = {
+#       #         accessModes = [
+#       #           "ReadWriteOnce"
+#       #         ]
+#       #         resources = {
+#       #           requests = {
+#       #             storage = "$(params.workspaceSize)"
+#       #           }
+#       #         }
+#       #       }
+#       #     }
+#       #   }
+#       # ]
+#       tasks = [
+#         {
+#           name = "check-commit"
+#           # workspaces = [
+#           #   {
+#           #     name      = "default-workspace"
+#           #     workspace = "default-workspace" # must match the workspace name above
+#           #   }
+#           # ]
+#           taskSpec = {
+#             metadata = {}
+#             resources = {
+#               inputs = [
+#                 {
+#                   name     = "source"
+#                   resource = "source" # Must match the PipelineResource name above
+#                 }
+#               ]
+#             }
+#             steps = [
+#               {
+#                 image      = "ubuntu"
+#                 name       = "check-commit"
+#                 workingDir = "$(resources.inputs.source.path)"
+#                 volumeMounts = [
+#                   {
+#                     name      = "docker-socket"
+#                     mountPath = "/var/run/docker.sock"
+#                   }
+#                 ]
+#                 script = <<-EOF
+#                   pwd
+#                   ls
+#                   git rev-parse --verify --short
+#                   docker ls
+#                   # git init
+#                   # git add remote origin $(params.url)
+#                   # git checkout $(params.revision)
+#                   # git reset --hard
+#                 EOF
+#               }
+#             ]
+#           }
+#         }
+#       ]
+#     }
+#   })
+# }
 
 resource "google_dns_record_set" "triggers_tekon_iskprinter_com" {
   project      = var.project
@@ -486,7 +681,7 @@ resource "kubernetes_ingress" "tekton_triggers_ingress" {
         path {
           path = "/"
           backend {
-            service_name = "el-github-listener-interceptor"
+            service_name = "el-github-event-listener"
             service_port = 8080
           }
         }

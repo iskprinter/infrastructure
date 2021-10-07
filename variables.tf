@@ -42,6 +42,25 @@ variable "neo4j_persistent_volume_size" {
 
 # CI/CD
 
+variable "cicd_bot_ssh_private_key" {
+  type      = string
+  sensitive = true
+}
+
+variable "cicd_bot_container_registry_username" {
+  type    = string
+  default = "iskprintergitbot"
+}
+
+variable "cicd_bot_container_registry_access_token" {
+  type      = string
+  sensitive = true
+}
+
+variable "github_known_hosts" {
+  type = string
+}
+
 variable "tekton_pipeline_version" {
   type    = string
   default = "0.28.0"
@@ -55,21 +74,6 @@ variable "tekton_triggers_version" {
 variable "tekton_dashboard_version" {
   type    = string
   default = "0.20.0"
-}
-
-variable "git_bot_ssh_key_base64" {
-  type      = string
-  sensitive = true
-}
-
-variable "git_bot_container_registry_username" {
-  type    = string
-  default = "iskprintergitbot"
-}
-
-variable "git_bot_container_registry_access_token" {
-  type      = string
-  sensitive = true
 }
 
 # Certificates

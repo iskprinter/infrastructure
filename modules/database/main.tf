@@ -18,8 +18,8 @@ resource "kubernetes_secret" "neo4j_password" {
     namespace = local.namespace
   }
   type = "Opaque"
-  data = {
-    secret = random_password.neo4j.result
+  binary_data = {
+    secret = base64encode(random_password.neo4j.result)
   }
 }
 
