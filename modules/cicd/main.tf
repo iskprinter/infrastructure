@@ -357,16 +357,12 @@ resource "kubectl_manifest" "github_trigger_binding" {
     }
     spec = {
       params = [
-        # {
-        #   name  = "buildRevision"
-        #   value = "$(body.head_commit.id)"
-        # },
         {
-          name  = "gitrevision"
+          name  = "revision"
           value = "$(body.pull_request.head.sha)"
         },
         {
-          name  = "gitrepositoryurl"
+          name  = "url"
           value = "$(body.repository.ssh_url)"
         }
       ]
@@ -374,7 +370,7 @@ resource "kubectl_manifest" "github_trigger_binding" {
   })
 }
 
-# Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/v1beta1/github/github-eventlistener-interceptor.yaml
+# Based on the example at https://github.com/tektoncd/triggers/blob/main/docs/triggertemplates.md
 resource "kubectl_manifest" "github_trigger_template" {
   depends_on = [
     kubectl_manifest.tekton_triggers,
@@ -390,77 +386,51 @@ resource "kubectl_manifest" "github_trigger_template" {
     spec = {
       params = [
         {
-          # name        = "buildRevision"
-          name = "gitrevision"
-          # description = "The Git commit revision"
+          name = "url"
         },
         {
-          name = "gitrepositoryurl"
+          name = "revision"
         }
       ]
       resourcetemplates = [
         {
-          # apiVersion = "tekton.dev/v1beta1"
-          # kind       = "PipelineRun"
-          apiVersion = "tekton.dev/v1alpha1"
-          kind       = "TaskRun"
+          apiVersion = "tekton.dev/v1beta1"
+          kind       = "PipelineRun"
           metadata = {
             generateName = "github-pipeline-run-"
           }
           spec = {
             serviceAccountName = "cicd-bot"
-            inputs = {
-              resources = [
-                {
-                  name = "source"
-                  resourceSpec = {
-                    type = "git"
-                    params = [
-                      {
-                        name  = "revision"
-                        value = "$(tt.params.gitrevision)"
-                      },
-                      {
-                        name  = "url"
-                        value = "$(tt.params.gitrepositoryurl)"
-                      }
-                    ]
-                  }
-                }
-              ]
+            pipelineRef = {
+              name = "github-pipeline"
             }
-            taskSpec = {
-              inputs = {
-                resources = [
-                  {
-                    name = "source"
-                    type = "git"
-                  }
-                ]
+            params = [
+              {
+                name  = "url"
+                value = "$(tt.params.url)"
+              },
+              {
+                name  = "revision"
+                value = "$(tt.params.revision)"
               }
-              steps = [
-                {
-                  image  = "ubuntu"
-                  script = <<-EOF
-                    #! /bin/bash
-                    ls -al $(inputs.resources.source.path)
-                  EOF
+            ]
+            workspaces = [
+              {
+                name = "default"
+                volumeClaimTemplate = {
+                  spec = {
+                    accessModes = [
+                      "ReadWriteOnce"
+                    ]
+                    resources = {
+                      requests = {
+                        storage = "1Gi"
+                      }
+                    }
+                  }
                 }
-              ]
-            }
-            # pipelineRef = {
-            #   name = "github-pipeline"
-            # }
-            # workspaces = [
-            #   {
-            #     name     = "app-source"
-            #     emptyDir = {}
-            #   },
-            #   {
-            #     name     = "config-source"
-            #     emptyDir = {}
-            #   }
-            # ]
+              }
+            ]
           }
         }
       ]
@@ -468,90 +438,142 @@ resource "kubectl_manifest" "github_trigger_template" {
   })
 }
 
-# # Based on the example at https://tekton.dev/vault/pipelines-v0.26.0/pipelines/#pipelines
-# resource "kubectl_manifest" "github_pipeline" {
-#   depends_on = [
-#     kubectl_manifest.tekton_triggers,
-#     kubectl_manifest.tekton_triggers_interceptors
-#   ]
-#   yaml_body = yamlencode({
-#     apiVersion = "tekton.dev/v1beta1"
-#     kind       = "Pipeline"
-#     metadata = {
-#       namespace = "tekton-pipelines"
-#       name      = "github-pipeline"
-#     }
-#     spec = {
-#       params = [
-#         {
-#           name        = "revision"
-#           type        = "string"
-#           description = "The git revision of the repo to build."
-#           default     = "HEAD"
-#         },
-#         {
-#           name        = "url"
-#           type        = "string"
-#           description = "The SSH URL of the repo to build."
-#         }
-#       ]
-#       workspaces = [
-#         {
-#           name = "pipeline-ws1"
-#         }
-#       ]
-#       tasks = [
-#         {
-#           name = "clone-commit"
-#           params = [
-#             {
-#               name  = "revision"
-#               value = "$(params.revision)"
-#             },
-#             {
-#               name  = "url"
-#               value = "$(params.url)"
-#             }
-#           ]
-#           taskSpec = {
-#             metadata = {}
-#             params = [
-#               {
-#                 name = "revision"
-#                 type = "string"
-#               },
-#               {
-#                 name = "url"
-#                 type = "string"
-#               }
-#             ]
-#             steps = [
-#               {
-#                 image     = "ubuntu"
-#                 name      = "check-commit"
-#                 resources = {}
-#                 script    = <<-EOF
-#                   ls -al
-#                   git rev-parse --verify --short
-#                   # git init
-#                   # git add remote origin $(params.url)
-#                   # git checkout $(params.revision)
-#                   # git reset --hard
-#                 EOF
-#               }
-#             ]
-#           }
-#           workspaces = [
-#             {
-#               name      = "src"
-#               workspace = "pipeline-ws1"
-#             }
-#           ]
-#         }
-#       ]
-#     }
-#   })
-# }
+# Based on the example at https://tekton.dev/vault/pipelines-v0.26.0/pipelines/#pipelines
+resource "kubectl_manifest" "github_pipeline" {
+  depends_on = [
+    kubectl_manifest.tekton_triggers,
+    kubectl_manifest.tekton_triggers_interceptors
+  ]
+  yaml_body = yamlencode({
+    apiVersion = "tekton.dev/v1beta1"
+    kind       = "Pipeline"
+    metadata = {
+      namespace = "tekton-pipelines"
+      name      = "github-pipeline"
+    }
+    spec = {
+      params = [
+        {
+          name        = "url"
+          type        = "string"
+          description = "The URL of the repo to build"
+        },
+        {
+          name        = "revision"
+          type        = "string"
+          description = "The revision to of the repo to build"
+        }
+      ]
+      workspaces = [
+        {
+          name = "default" # Must match the name in the PipelineRun?
+        }
+      ]
+      tasks = [
+        {
+          name = "git-clone"
+          taskRef = {
+            name = "git-clone"
+          }
+          workspaces = [
+            {
+              name      = "default" # Must match what the git-clone task expects.
+              workspace = "default" # Must match above
+            }
+          ]
+          params = [
+            {
+              name = "url"
+              value = "$(params.url)"
+            },
+            {
+              name = "revision"
+              value = "$(params.revision)"
+            }
+          ]
+        },
+        {
+          runAfter = [
+            "git-clone"
+          ]
+          name = "check-commit"
+          taskRef = {
+            name = "check-commit"
+          }
+          workspaces = [
+            {
+              name      = "default"
+              workspace = "default" # Must match above
+            }
+          ]
+        }
+      ]
+    }
+  })
+}
+
+resource "kubectl_manifest" "git_clone_task" {
+  yaml_body = <<-YAML
+    apiVersion: tekton.dev/v1beta1
+    kind: Task
+    metadata:
+      namespace: tekton-pipelines
+      name: git-clone
+    spec:
+      params:
+      - name: url
+        description: Repository URL to clone from.
+        type: string
+      - name: revision
+        description: Revision to checkout. (branch, tag, sha, ref, etc...)
+        type: string
+      workspaces:
+      - name: default
+        mountPath: "/workspace"
+      steps:
+      - name: check-out
+        image: "alpine/git:v2.32.0"
+        workingDir: $(workspaces.default.path)
+        env:
+        - name: PARAM_URL
+          value: $(params.url)
+        - name: PARAM_REVISION
+          value: $(params.revision)
+        script: |
+          #!/bin/sh
+          set -eux
+          pwd
+          git init
+          git remote add origin "$${PARAM_URL}"
+          git fetch origin "$${PARAM_REVISION}" --depth=1
+          git reset --hard FETCH_HEAD
+          git rev-parse --verify HEAD
+          ls -al
+  YAML
+}
+
+resource "kubectl_manifest" "github_task" {
+  yaml_body = <<-YAML
+    apiVersion: tekton.dev/v1beta1
+    kind: Task
+    metadata:
+      namespace: tekton-pipelines
+      name: check-commit
+    spec:
+      workspaces:
+      - name: default
+        mountPath: "/workspace"
+      steps:
+      - image: "alpine/git:v2.32.0"
+        workingDir: $(workspaces.default.path)
+        script: |
+          #!/bin/sh
+          set -eux
+          git rev-parse --verify HEAD
+          pwd
+          ls -al
+  YAML
+}
 
 # Based on the example at https://github.com/tektoncd/pipeline/blob/v0.28.1/examples/v1beta1/pipelineruns/demo-optional-resources.yaml
 # resource "kubectl_manifest" "github_pipeline" {

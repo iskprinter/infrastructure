@@ -63,7 +63,7 @@ variable "github_known_hosts" {
 
 variable "tekton_pipeline_version" {
   type    = string
-  default = "0.28.0"
+  default = "0.28.1"
 }
 
 variable "tekton_triggers_version" {
