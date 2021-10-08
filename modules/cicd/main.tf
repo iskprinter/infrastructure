@@ -418,6 +418,11 @@ resource "kubectl_manifest" "github_trigger_template" {
               {
                 name = "default"
                 volumeClaimTemplate = {
+                  metadata = {
+                    labels = {
+                      isTektonWorkspace = "true"
+                    }
+                  }
                   spec = {
                     accessModes = [
                       "ReadWriteOnce"
@@ -483,11 +488,11 @@ resource "kubectl_manifest" "github_pipeline" {
           ]
           params = [
             {
-              name = "url"
+              name  = "url"
               value = "$(params.url)"
             },
             {
-              name = "revision"
+              name  = "revision"
               value = "$(params.revision)"
             }
           ]
@@ -575,109 +580,6 @@ resource "kubectl_manifest" "github_task" {
   YAML
 }
 
-# Based on the example at https://github.com/tektoncd/pipeline/blob/v0.28.1/examples/v1beta1/pipelineruns/demo-optional-resources.yaml
-# resource "kubectl_manifest" "github_pipeline" {
-#   depends_on = [
-#     kubectl_manifest.tekton_triggers,
-#     kubectl_manifest.tekton_triggers_interceptors
-#   ]
-#   yaml_body = yamlencode({
-#     apiVersion = "tekton.dev/v1beta1"
-#     kind       = "Pipeline"
-#     metadata = {
-#       namespace = "tekton-pipelines"
-#       name      = "github-pipeline"
-#     }
-#     spec = {
-#       params = [
-#         {
-#           name        = "workspaceSize"
-#           type        = "string"
-#           description = "The size of the workspace to reserve. Deleted after pipeline run."
-#           default     = "1Gi"
-#         }
-#       ]
-#       resources = [
-#         {
-#           name = "source"  # Must match the name in the TriggerTemplate above.
-#           type = "git"
-#         }
-#       ]
-#       volumes = [
-#         {
-#           name = "docker-socket"
-#           hostPath = {
-#             path = "/var/run/docker.sock"
-#             type = "Socket"
-#           }
-#         }
-#       ]
-#       # workspaces = [
-#       #   {
-#       #     name = "default-workspace"
-#       #     volumeClaimTemplate = {
-#       #       spec = {
-#       #         accessModes = [
-#       #           "ReadWriteOnce"
-#       #         ]
-#       #         resources = {
-#       #           requests = {
-#       #             storage = "$(params.workspaceSize)"
-#       #           }
-#       #         }
-#       #       }
-#       #     }
-#       #   }
-#       # ]
-#       tasks = [
-#         {
-#           name = "check-commit"
-#           # workspaces = [
-#           #   {
-#           #     name      = "default-workspace"
-#           #     workspace = "default-workspace" # must match the workspace name above
-#           #   }
-#           # ]
-#           taskSpec = {
-#             metadata = {}
-#             resources = {
-#               inputs = [
-#                 {
-#                   name     = "source"
-#                   resource = "source" # Must match the PipelineResource name above
-#                 }
-#               ]
-#             }
-#             steps = [
-#               {
-#                 image      = "ubuntu"
-#                 name       = "check-commit"
-#                 workingDir = "$(resources.inputs.source.path)"
-#                 volumeMounts = [
-#                   {
-#                     name      = "docker-socket"
-#                     mountPath = "/var/run/docker.sock"
-#                   }
-#                 ]
-#                 script = <<-EOF
-#                   pwd
-#                   ls
-#                   git rev-parse --verify --short
-#                   docker ls
-#                   # git init
-#                   # git add remote origin $(params.url)
-#                   # git checkout $(params.revision)
-#                   # git reset --hard
-#                 EOF
-#               }
-#             ]
-#           }
-#         }
-#       ]
-#     }
-#   })
-# }
-
 resource "google_dns_record_set" "triggers_tekon_iskprinter_com" {
   project      = var.project
   managed_zone = var.dns_managed_zone_name
@@ -738,4 +640,77 @@ resource "kubectl_manifest" "certificate_triggers_tekton_iskprinter_com" {
       ]
     }
   })
+}
+
+# Cleanup (tekton does not clean up task pods or workspace PVCs)
+
+resource "kubernetes_service_account" "tekton_cleanup" {
+  metadata {
+    namespace = "tekton-pipelines"
+    name      = "tekton-cleanup"
+  }
+}
+
+resource "kubernetes_role" "tekton_cleanup_role" {
+  metadata {
+    namespace = "tekton-pipelines"
+    name      = "tekton-cleanup"
+  }
+  rule {
+    api_groups = [""]
+    resources  = ["pods", "persistentvolumeclaims"]
+    verbs      = ["get", "list", "delete", "deletecollection"]
+  }
+}
+
+resource "kubernetes_role_binding" "tekton_cleanup_role_binding" {
+  metadata {
+    name      = "tekton-cleanup"
+    namespace = "tekton-pipelines"
+  }
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "ClusterRole"
+    name      = "tekton-cleanup"
+  }
+  subject {
+    kind      = "ServiceAccount"
+    name      = "tekton-cleanup"
+    namespace = "tekton-pipelines"
+  }
+}
+
+resource "kubernetes_cron_job" "tekton_cleanup" {
+  metadata {
+    namespace = "tekton-pipelines"
+    name      = "tekton-cleanup"
+  }
+  spec {
+    concurrency_policy = "Replace"
+    schedule           = "*/5 * * * *"
+    job_template {
+      metadata {
+        name = "tekton-cleanup"
+      }
+      spec {
+        template {
+          metadata {
+            name = "tekton-cleanup"
+          }
+          spec {
+            service_account_name = "tekton-cleanup"
+            container {
+              name    = "tekton-cleanup"
+              image   = "alpine/k8s:${var.alpine_k8s_version}"
+              command = ["/bin/bash"]
+              args = [
+                "-c",
+                file("${path.module}/cleanup.sh")
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
 }

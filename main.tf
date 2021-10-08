@@ -40,11 +40,21 @@ module "cert_manager" {
   cert_manager_version       = var.cert_manager_version
 }
 
+module "preemption_cleanup" {
+  source                     = "./modules/preemption_cleanup/"
+  alpine_k8s_version         = var.alpine_k8s_version
+  cluster_ca_certificate     = module.cluster.cluster_ca_certificate
+  cluster_client_certificate = module.cluster.cluster_client_certificate
+  cluster_client_key         = module.cluster.cluster_client_key
+  cluster_endpoint           = module.cluster.cluster_endpoint
+}
+
 module "cicd" {
   depends_on = [
     module.cert_manager
   ]
   source                                   = "./modules/cicd/"
+  alpine_k8s_version                       = var.alpine_k8s_version
   cicd_bot_container_registry_access_token = var.cicd_bot_container_registry_access_token
   cicd_bot_container_registry_username     = var.cicd_bot_container_registry_username
   cicd_bot_ssh_private_key                 = var.cicd_bot_ssh_private_key

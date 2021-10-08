@@ -1,3 +1,7 @@
+variable "alpine_k8s_version" {
+  type = string
+}
+
 variable "cicd_bot_ssh_private_key" {
   type      = string
   sensitive = true

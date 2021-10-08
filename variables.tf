@@ -1,5 +1,6 @@
 
 # GCP Environment
+
 variable "project" {
   type    = string
   default = "cameronhudson8"
@@ -18,6 +19,13 @@ variable "min_node_count" {
 variable "max_node_count" {
   type    = number
   default = 4
+}
+
+# Cleanup
+
+variable "alpine_k8s_version" {
+  type    = string
+  default = "1.20.7"
 }
 
 # Ingress
