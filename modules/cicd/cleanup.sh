@@ -9,12 +9,15 @@ completed_tekton_pipelines_json=($(
         | jq -cM '
             .items
             | map(
-            select(.status | has("containerStatuses")) 
-            | select(.status.containerStatuses[0].state 
-            | to_entries 
-            | .[] 
-            | select(.value.reason == "Completed")) 
-            | .metadata.labels["tekton.dev/pipelineRun"]
+                select(.status | has("containerStatuses")) 
+                | select(
+                    .status.containerStatuses[0].state
+                    | to_entries 
+                    | .[] 
+                    | select(.value.reason == "Completed")
+                )
+                | select(.metadata.labels | has("tekton.dev/pipelineRun"))
+                | .metadata.labels["tekton.dev/pipelineRun"]
             )
         '
 ))
