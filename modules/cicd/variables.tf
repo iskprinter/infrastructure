@@ -2,19 +2,19 @@ variable "alpine_k8s_version" {
   type = string
 }
 
-variable "cicd_bot_ssh_private_key_base_64" {
+variable "cicd_bot_github_username" {
+  type = string
+}
+
+variable "cicd_bot_personal_access_token_base64" {
   type      = string
   sensitive = true
 }
 
-# variable "cicd_bot_container_registry_username" {
-#   type = string
-# }
-
-# variable "cicd_bot_container_registry_access_token" {
-#   type      = string
-#   sensitive = true
-# }
+variable "cicd_bot_ssh_private_key_base_64" {
+  type      = string
+  sensitive = true
+}
 
 variable "cluster_ca_certificate" {
   type = string

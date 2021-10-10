@@ -129,6 +129,17 @@ resource "google_project_iam_member" "cicd_bot_artifact_registry_writer_binding"
   member  = "serviceAccount:${google_service_account.cicd_bot.email}"
 }
 
+resource "kubernetes_secret" "cicd_bot_personal_access_token" {
+  metadata {
+    namespace = "tekton-pipelines"
+    name      = "cicd-bot-personal-access-token"
+  }
+  binary_data = {
+    username = base64encode(var.cicd_bot_github_username)
+    password = var.cicd_bot_personal_access_token_base64
+  }
+}
+
 # Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
 resource "kubernetes_role" "cicd_bot" {
   depends_on = [
@@ -167,6 +178,12 @@ resource "kubernetes_role" "cicd_bot" {
     resources      = ["podsecuritypolicies"]
     resource_names = ["tekton-triggers"]
     verbs          = ["use"]
+  }
+  rule {
+    api_groups     = [""]
+    resources      = ["secrets"]
+    resource_names = [kubernetes_secret.cicd_bot_personal_access_token.metadata[0].name]
+    verbs          = ["get"]
   }
 }
 
@@ -383,8 +400,12 @@ resource "kubectl_manifest" "trigger_binding_github" {
           value = "$(body.pull_request.head.sha)"
         },
         {
-          name  = "url"
+          name  = "repo-url"
           value = "$(body.repository.ssh_url)"
+        },
+        {
+          name  = "github-status-url"
+          value = "$(body.pull_request.statuses_url)"
         }
       ]
     }
@@ -410,10 +431,13 @@ resource "kubectl_manifest" "trigger_template_github" {
           name = "image-name"
         },
         {
-          name = "url"
+          name = "repo-url"
         },
         {
           name = "revision"
+        },
+        {
+          name = "github-status-url"
         }
       ]
       resourcetemplates = [
@@ -434,12 +458,16 @@ resource "kubectl_manifest" "trigger_template_github" {
                 value = "$(tt.params.image-name)"
               },
               {
-                name  = "url"
-                value = "$(tt.params.url)"
+                name  = "repo-url"
+                value = "$(tt.params.repo-url)"
               },
               {
                 name  = "revision"
                 value = "$(tt.params.revision)"
+              },
+              {
+                name  = "github-status-url"
+                value = "$(tt.params.github-status-url)"
               }
             ]
             workspaces = [
@@ -487,7 +515,7 @@ resource "kubectl_manifest" "pipeline_github_pr" {
           description = "The name of the repo to build"
         },
         {
-          name        = "url"
+          name        = "repo-url"
           type        = "string"
           description = "The URL of the repo to build"
         },
@@ -495,6 +523,11 @@ resource "kubectl_manifest" "pipeline_github_pr" {
           name        = "revision"
           type        = "string"
           description = "The revision to of the repo to build"
+        },
+        {
+          name        = "github-status-url"
+          type        = "string"
+          description = "The GitHub status URL"
         }
       ]
       workspaces = [
@@ -503,6 +536,22 @@ resource "kubectl_manifest" "pipeline_github_pr" {
         }
       ]
       tasks = [
+        {
+          name = "report-initial-status"
+          params = [
+            {
+              name  = "github-status-url"
+              value = "$(params.github-status-url)"
+            },
+            {
+              name  = "tekton-pipeline-status"
+              value = "None"
+            }
+          ]
+          taskRef = {
+            name = "report-status"
+          }
+        },
         {
           name = "github-checkout"
           taskRef = {
@@ -516,8 +565,8 @@ resource "kubectl_manifest" "pipeline_github_pr" {
           ]
           params = [
             {
-              name  = "url"
-              value = "$(params.url)"
+              name  = "repo-url"
+              value = "$(params.repo-url)"
             },
             {
               name  = "revision"
@@ -578,7 +627,17 @@ resource "kubectl_manifest" "pipeline_github_pr" {
       ]
       finally = [
         {
-          name = "report-status"
+          name = "report-final-status"
+          params = [
+            {
+              name  = "github-status-url"
+              value = "$(params.github-status-url)"
+            },
+            {
+              name  = "tekton-pipeline-status"
+              value = "$(tasks.status)"
+            }
+          ]
           taskRef = {
             name = "report-status"
           }
@@ -597,7 +656,7 @@ resource "kubectl_manifest" "task_github_checkout" {
       name: github-checkout
     spec:
       params:
-      - name: url
+      - name: repo-url
         description: Repository URL to clone from.
         type: string
       - name: revision
@@ -611,16 +670,16 @@ resource "kubectl_manifest" "task_github_checkout" {
         image: "alpine/git:v2.32.0"
         workingDir: $(workspaces.default.path)
         env:
-        - name: PARAM_URL
-          value: $(params.url)
-        - name: PARAM_REVISION
+        - name: REPO_URL
+          value: $(params.repo-url)
+        - name: REVISION
           value: $(params.revision)
         script: |
           #!/bin/sh
           set -eux
           git init
-          git remote add origin "$${PARAM_URL}"
-          git fetch origin "$${PARAM_REVISION}" --depth=1
+          git remote add origin "$${REPO_URL}"
+          git fetch origin "$${REVISION}" --depth=1
           git reset --hard FETCH_HEAD
   YAML
 }
@@ -691,27 +750,61 @@ resource "kubectl_manifest" "task_run_build" {
   YAML
 }
 
-# resource "kubectl_manifest" "task_report_status" {
-#   yaml_body = <<-YAML
-#     apiVersion: tekton.dev/v1beta1
-#     kind: Task
-#     metadata:
-#       name: report-status
-#       namespace: tekton-pipelines
-#     spec:
-#       # params:
-#       # - description: The name of the build image to use
-#       #   name: build-image-name
-#       # - description: The tag of the build image to use
-#       #   name: build-image-tag
-#       steps:
-#       - image: "alpine:3.14"
-#         name: report-status
-#         script: |
-#           #!/bin/sh
-#           echo 'reporting status...'
-#   YAML
-# }
+resource "kubectl_manifest" "task_report_status" {
+  yaml_body = yamlencode({
+    apiVersion = "tekton.dev/v1beta1"
+    kind       = "Task"
+    metadata = {
+      name      = "report-status"
+      namespace = "tekton-pipelines"
+    }
+    spec = {
+      params = [
+        {
+          description = "The GitHub status URL"
+          name        = "github-status-url"
+        },
+        {
+          description = "The Tekton pipeline status"
+          name        = "tekton-pipeline-status"
+        }
+      ]
+      steps = [
+        {
+          image = "alpine/k8s:${var.alpine_k8s_version}"
+          name  = "report-status"
+          env = [
+            {
+              name  = "TEKTON_PIPELINE_STATUS"
+              value = "$(params.tekton-pipeline-status)"
+            },
+            {
+              name  = "GITHUB_STATUS_URL"
+              value = "$(params.github-status-url)"
+            },
+            {
+              name  = "GITHUB_USERNAME"
+              value = var.cicd_bot_github_username
+            },
+            {
+              name  = "GITHUB_TOKEN_SECRET_NAMESPACE"
+              value = kubernetes_secret.cicd_bot_personal_access_token.metadata[0].namespace
+            },
+            {
+              name  = "GITHUB_TOKEN_SECRET_NAME"
+              value = kubernetes_secret.cicd_bot_personal_access_token.metadata[0].name
+            }
+          ]
+          command = ["/bin/bash"]
+          args = [
+            "-c",
+            file("${path.module}/report_status.sh")
+          ]
+        }
+      ]
+    }
+  })
+}
 
 resource "google_dns_record_set" "triggers_tekon_iskprinter_com" {
   project      = var.project

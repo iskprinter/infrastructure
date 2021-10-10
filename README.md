@@ -18,6 +18,7 @@ Deploys a Kubernetes cluster and supporting resources
     ```bash
     export TF_VAR_cicd_bot_ssh_private_key_base_64=$(cat "${HOME}/.ssh/IskprinterGitBot.id_rsa" | base64)
     export TF_VAR_github_known_hosts_base_64=$(cat "${HOME}/.ssh/known_hosts" | grep 'github' | base64)
+    export TF_VAR_cicd_bot_personal_access_token_base64=$(echo -n '<token>' | base64) # Use for GitHub API access only
     ```
 
 1. Export the unencoded SSH key that the service account will use to push to Docker Hub.

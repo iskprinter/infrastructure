@@ -50,23 +50,23 @@ module "preemption_cleanup" {
 }
 
 module "cicd" {
-  source             = "./modules/cicd/"
-  alpine_k8s_version = var.alpine_k8s_version
-  # cicd_bot_container_registry_access_token = var.cicd_bot_container_registry_access_token
-  # cicd_bot_container_registry_username     = var.cicd_bot_container_registry_username
-  cicd_bot_ssh_private_key_base_64 = var.cicd_bot_ssh_private_key_base_64
-  cluster_ca_certificate           = module.cluster.cluster_ca_certificate
-  cluster_client_certificate       = module.cluster.cluster_client_certificate
-  cluster_client_key               = module.cluster.cluster_client_key
-  cluster_endpoint                 = module.cluster.cluster_endpoint
-  dns_managed_zone_name            = module.dns.managed_zone_name
-  github_known_hosts_base_64       = var.github_known_hosts_base_64
-  ingress_ip                       = module.ingress.ip
-  project                          = var.project
-  region                           = var.region
-  tekton_dashboard_version         = var.tekton_dashboard_version
-  tekton_pipeline_version          = var.tekton_pipeline_version
-  tekton_triggers_version          = var.tekton_triggers_version
+  source                                = "./modules/cicd/"
+  alpine_k8s_version                    = var.alpine_k8s_version
+  cicd_bot_github_username              = var.cicd_bot_github_username
+  cicd_bot_personal_access_token_base64 = var.cicd_bot_personal_access_token_base64
+  cicd_bot_ssh_private_key_base_64      = var.cicd_bot_ssh_private_key_base_64
+  cluster_ca_certificate                = module.cluster.cluster_ca_certificate
+  cluster_client_certificate            = module.cluster.cluster_client_certificate
+  cluster_client_key                    = module.cluster.cluster_client_key
+  cluster_endpoint                      = module.cluster.cluster_endpoint
+  dns_managed_zone_name                 = module.dns.managed_zone_name
+  github_known_hosts_base_64            = var.github_known_hosts_base_64
+  ingress_ip                            = module.ingress.ip
+  project                               = var.project
+  region                                = var.region
+  tekton_dashboard_version              = var.tekton_dashboard_version
+  tekton_pipeline_version               = var.tekton_pipeline_version
+  tekton_triggers_version               = var.tekton_triggers_version
 }
 
 module "database" {
