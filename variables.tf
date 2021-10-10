@@ -1,5 +1,6 @@
 
 # GCP Environment
+
 variable "project" {
   type    = string
   default = "cameronhudson8"
@@ -18,6 +19,13 @@ variable "min_node_count" {
 variable "max_node_count" {
   type    = number
   default = 4
+}
+
+# Cleanup
+
+variable "alpine_k8s_version" {
+  type    = string
+  default = "1.20.7"
 }
 
 # Ingress
@@ -42,9 +50,28 @@ variable "neo4j_persistent_volume_size" {
 
 # CI/CD
 
+variable "cicd_bot_ssh_private_key_base_64" {
+  type      = string
+  sensitive = true
+}
+
+# variable "cicd_bot_container_registry_username" {
+#   type    = string
+#   default = "iskprintergitbot"
+# }
+
+# variable "cicd_bot_container_registry_access_token" {
+#   type      = string
+#   sensitive = true
+# }
+
+variable "github_known_hosts_base_64" {
+  type = string
+}
+
 variable "tekton_pipeline_version" {
   type    = string
-  default = "0.28.0"
+  default = "0.28.1"
 }
 
 variable "tekton_triggers_version" {
@@ -55,21 +82,6 @@ variable "tekton_triggers_version" {
 variable "tekton_dashboard_version" {
   type    = string
   default = "0.20.0"
-}
-
-variable "git_bot_ssh_key_base64" {
-  type      = string
-  sensitive = true
-}
-
-variable "git_bot_container_registry_username" {
-  type    = string
-  default = "iskprintergitbot"
-}
-
-variable "git_bot_container_registry_access_token" {
-  type      = string
-  sensitive = true
 }
 
 # Certificates
