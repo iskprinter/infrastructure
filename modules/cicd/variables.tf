@@ -49,6 +49,10 @@ variable "project" {
   type = string
 }
 
+variable "region" {
+  type = string
+}
+
 variable "tekton_dashboard_version" {
   type = string
 }

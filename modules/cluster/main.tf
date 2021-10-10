@@ -4,6 +4,13 @@ resource "google_service_account" "gke" {
   display_name = "GKE Service Account"
 }
 
+
+resource "google_project_iam_member" "gke_artifact_registry_reader_binding" {
+  project = var.project
+  role    = "roles/artifactregistry.reader"
+  member  = "serviceAccount:${google_service_account.gke.email}"
+}
+
 resource "google_container_cluster" "general_purpose" {
   project                  = var.project
   name                     = "general-purpose-cluster"

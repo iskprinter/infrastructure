@@ -8,6 +8,8 @@ terraform {
   }
 }
 
+provider "google-beta" {}
+
 provider "helm" {
   kubernetes {
     host                   = "https://${module.cluster.cluster_endpoint}"

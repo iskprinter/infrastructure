@@ -1,3 +1,13 @@
+# Image Registry
+
+resource "google_artifact_registry_repository" "iskprinter" {
+  provider      = google-beta
+  project       = var.project
+  repository_id = "iskprinter"
+  location      = var.region
+  format        = "DOCKER"
+}
+
 # Tekton Pipeline
 
 data "google_storage_bucket_object_content" "tekton_pipeline" {
@@ -67,14 +77,10 @@ resource "kubectl_manifest" "tekton_triggers_interceptors" {
 
 # Service account and credentials
 
-resource "kubernetes_service_account" "cicd_bot_service_account" {
-  metadata {
-    namespace = "tekton-pipelines"
-    name      = "cicd-bot"
-  }
-  secret {
-    name = "cicd-bot-ssh-key"
-  }
+resource "google_service_account" "cicd_bot" {
+  project      = var.project
+  account_id   = "cicd-bot"
+  display_name = "CICD Bot Service Account"
 }
 
 resource "kubernetes_secret" "cicd_bot_ssh_key" {
@@ -92,26 +98,39 @@ resource "kubernetes_secret" "cicd_bot_ssh_key" {
   }
 }
 
-resource "google_service_account" "cicd_bot_service_account" {
-  project      = var.project
-  account_id   = kubernetes_service_account.cicd_bot_service_account.metadata[0].name
-  display_name = "Certificate Manager Service Account"
+resource "kubernetes_service_account" "cicd_bot" {
+  metadata {
+    namespace = "tekton-pipelines"
+    name      = "cicd-bot"
+    annotations = {
+      "iam.gke.io/gcp-service-account" = google_service_account.cicd_bot.email
+    }
+  }
+  secret {
+    name = kubernetes_secret.cicd_bot_ssh_key.metadata[0].name
+  }
 }
 
-resource "google_service_account_iam_member" "service_account_iam_workload_identity_user_binding" {
-  service_account_id = google_service_account.cicd_bot_service_account.name
+resource "google_service_account_iam_member" "cicd_bot_iam_workload_identity_user_binding" {
+  service_account_id = google_service_account.cicd_bot.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "serviceAccount:${var.project}.svc.id.goog[${kubernetes_service_account.cicd_bot_service_account.metadata[0].namespace}/${kubernetes_service_account.cicd_bot_service_account.metadata[0].name}]"
+  member             = "serviceAccount:${var.project}.svc.id.goog[${kubernetes_service_account.cicd_bot.metadata[0].namespace}/${kubernetes_service_account.cicd_bot.metadata[0].name}]"
 }
 
-resource "google_project_iam_member" "service_account_dns_record_sets_binding" {
+resource "google_project_iam_member" "cicd_bot_storage_object_admin_binding" {
+  project = var.project
+  role    = "roles/storage.objectAdmin"
+  member  = "serviceAccount:${google_service_account.cicd_bot.email}"
+}
+
+resource "google_project_iam_member" "cicd_bot_artifact_registry_writer_binding" {
   project = var.project
   role    = "roles/artifactregistry.writer"
-  member  = "serviceAccount:${google_service_account.cicd_bot_service_account.email}"
+  member  = "serviceAccount:${google_service_account.cicd_bot.email}"
 }
 
 # Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
-resource "kubernetes_role" "cicd_bot_role" {
+resource "kubernetes_role" "cicd_bot" {
   depends_on = [
     kubectl_manifest.tekton_triggers,
     kubectl_manifest.tekton_triggers_interceptors
@@ -152,25 +171,25 @@ resource "kubernetes_role" "cicd_bot_role" {
 }
 
 # Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
-resource "kubernetes_role_binding" "tekton_triggers_role_binding" {
+resource "kubernetes_role_binding" "cicd_bot" {
   metadata {
-    namespace = "tekton-pipelines"
+    namespace = kubernetes_service_account.cicd_bot.metadata[0].namespace
     name      = "cicd-bot-role-binding"
   }
   subject {
     kind      = "ServiceAccount"
-    namespace = "tekton-pipelines"
-    name      = "cicd-bot"
+    namespace = kubernetes_service_account.cicd_bot.metadata[0].namespace
+    name      = kubernetes_service_account.cicd_bot.metadata[0].name
   }
   role_ref {
     api_group = "rbac.authorization.k8s.io"
     kind      = "Role"
-    name      = "cicd-bot-role"
+    name      = kubernetes_role.cicd_bot.metadata[0].name
   }
 }
 
 # Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
-resource "kubernetes_cluster_role" "tekton_triggers_sa_cluster_role" {
+resource "kubernetes_cluster_role" "cicd_bot" {
   metadata {
     name = "cicd-bot-cluster-role"
   }
@@ -183,19 +202,19 @@ resource "kubernetes_cluster_role" "tekton_triggers_sa_cluster_role" {
 }
 
 # Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
-resource "kubernetes_cluster_role_binding" "tekton_triggers_sa_cluster_role_binding" {
+resource "kubernetes_cluster_role_binding" "cicd_bot" {
   metadata {
     name = "cicd-bot-cluster-role-binding"
   }
   subject {
     kind      = "ServiceAccount"
-    name      = "cicd-bot"
-    namespace = "tekton-pipelines"
+    namespace = kubernetes_service_account.cicd_bot.metadata[0].namespace
+    name      = kubernetes_service_account.cicd_bot.metadata[0].name
   }
   role_ref {
     api_group = "rbac.authorization.k8s.io"
     kind      = "ClusterRole"
-    name      = "cicd-bot-cluster-role"
+    name      = kubernetes_cluster_role.cicd_bot.metadata[0].name
   }
 }
 
@@ -357,7 +376,7 @@ resource "kubectl_manifest" "trigger_binding_github" {
       params = [
         {
           name  = "image-name"
-          value = "iskprinter-$(body.repository.name)"
+          value = "$(body.repository.name)"
         },
         {
           name  = "revision"
@@ -427,11 +446,6 @@ resource "kubectl_manifest" "trigger_template_github" {
               {
                 name = "default"
                 volumeClaimTemplate = {
-                  metadata = {
-                    labels = {
-                      isTektonWorkspace = "true"
-                    }
-                  }
                   spec = {
                     accessModes = [
                       "ReadWriteOnce"
@@ -562,6 +576,14 @@ resource "kubectl_manifest" "pipeline_github_pr" {
           }
         }
       ]
+      finally = [
+        {
+          name = "report-status"
+          taskRef = {
+            name = "report-status"
+          }
+        }
+      ]
     }
   })
 }
@@ -620,11 +642,7 @@ resource "kubectl_manifest" "task_construct_build_image" {
       - description: The name and tag of the image to run
         name: build-image-name-and-tag
       steps:
-      - args: [
-          "--context=./cicd",
-          "--destination=gcr.io/cameronhudson8/$${IMAGE_NAME}:$${IMAGE_TAG}"
-        ]
-        env:
+      - env:
         - name: IMAGE_NAME
           value: $(params.build-image-name)
         - name: IMAGE_TAG
@@ -632,6 +650,10 @@ resource "kubectl_manifest" "task_construct_build_image" {
         image: gcr.io/kaniko-project/executor:v1.3.0
         name: construct-build-image
         workingDir: $(workspaces.default.path)
+        args: [
+          "--context=./cicd",
+          "--destination=${var.region}-docker.pkg.dev/${var.project}/${google_artifact_registry_repository.iskprinter.name}/$(IMAGE_NAME):$(IMAGE_TAG)"
+        ]
       workspaces:
       - mountPath: /workspace
         name: default
@@ -652,7 +674,7 @@ resource "kubectl_manifest" "task_run_build" {
       - description: The tag of the build image to use
         name: build-image-tag
       steps:
-      - image: $(params.build-image-name):$(params.build-image-tag)
+      - image: "${var.region}-docker.pkg.dev/${var.project}/${google_artifact_registry_repository.iskprinter.name}/$(params.build-image-name):$(params.build-image-tag)"
         name: run-build
         script: |
           #!/bin/sh
@@ -668,6 +690,28 @@ resource "kubectl_manifest" "task_run_build" {
         name: default
   YAML
 }
+
+# resource "kubectl_manifest" "task_report_status" {
+#   yaml_body = <<-YAML
+#     apiVersion: tekton.dev/v1beta1
+#     kind: Task
+#     metadata:
+#       name: report-status
+#       namespace: tekton-pipelines
+#     spec:
+#       # params:
+#       # - description: The name of the build image to use
+#       #   name: build-image-name
+#       # - description: The tag of the build image to use
+#       #   name: build-image-tag
+#       steps:
+#       - image: "alpine:3.14"
+#         name: report-status
+#         script: |
+#           #!/bin/sh
+#           echo 'reporting status...'
+#   YAML
+# }
 
 resource "google_dns_record_set" "triggers_tekon_iskprinter_com" {
   project      = var.project
