@@ -50,22 +50,22 @@ variable "neo4j_persistent_volume_size" {
 
 # CI/CD
 
-variable "cicd_bot_ssh_private_key" {
+variable "cicd_bot_ssh_private_key_base_64" {
   type      = string
   sensitive = true
 }
 
-variable "cicd_bot_container_registry_username" {
-  type    = string
-  default = "iskprintergitbot"
-}
+# variable "cicd_bot_container_registry_username" {
+#   type    = string
+#   default = "iskprintergitbot"
+# }
 
-variable "cicd_bot_container_registry_access_token" {
-  type      = string
-  sensitive = true
-}
+# variable "cicd_bot_container_registry_access_token" {
+#   type      = string
+#   sensitive = true
+# }
 
-variable "github_known_hosts" {
+variable "github_known_hosts_base_64" {
   type = string
 }
 
