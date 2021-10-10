@@ -37,12 +37,9 @@ resource "kubectl_manifest" "tekton_dashboard" {
 
 resource "kubernetes_service_account" "cicd_bot_service_account" {
   metadata {
-    name      = "cicd-bot"
     namespace = "tekton-pipelines"
+    name      = "cicd-bot"
   }
-  # secret {
-  #   name = "cicd-bot-container-registry-credentials"
-  # }
   secret {
     name = "cicd-bot-ssh-key"
   }
@@ -62,21 +59,6 @@ resource "kubernetes_secret" "cicd_bot_ssh_key" {
     known_hosts    = var.github_known_hosts_base_64
   }
 }
-
-# resource "kubernetes_secret" "cicd_bot_container_registry_access_token" {
-#   type = "kubernetes.io/basic-auth"
-#   metadata {
-#     name      = "cicd-bot-container-registry-credentials"
-#     namespace = "tekton-pipelines"
-#     annotations = {
-#       "tekton.dev/docker-0" = "hub.docker.com"
-#     }
-#   }
-#   binary_data = {
-#     username = base64encode(var.cicd_bot_container_registry_username)
-#     password = base64encode(var.cicd_bot_container_registry_access_token)
-#   }
-# }
 
 # Tekton Triggers
 # Based on https://github.com/sdaschner/tekton-argocd-example/tree/main/pipelinetriggers
