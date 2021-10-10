@@ -32,34 +32,6 @@ resource "kubectl_manifest" "tekton_dashboard" {
   wait_for_rollout = false
 }
 
-# Service account and credentials
-# Based on https://github.com/sdaschner/tekton-argocd-example
-
-resource "kubernetes_service_account" "cicd_bot_service_account" {
-  metadata {
-    namespace = "tekton-pipelines"
-    name      = "cicd-bot"
-  }
-  secret {
-    name = "cicd-bot-ssh-key"
-  }
-}
-
-resource "kubernetes_secret" "cicd_bot_ssh_key" {
-  type = "kubernetes.io/ssh-auth"
-  metadata {
-    name      = "cicd-bot-ssh-key"
-    namespace = "tekton-pipelines"
-    annotations = {
-      "tekton.dev/git-0" = "github.com"
-    }
-  }
-  binary_data = {
-    ssh-privatekey = var.cicd_bot_ssh_private_key_base_64
-    known_hosts    = var.github_known_hosts_base_64
-  }
-}
-
 # Tekton Triggers
 # Based on https://github.com/sdaschner/tekton-argocd-example/tree/main/pipelinetriggers
 
@@ -91,6 +63,51 @@ resource "kubectl_manifest" "tekton_triggers_interceptors" {
   count            = length(data.kubectl_file_documents.tekton_triggers_interceptors.documents)
   yaml_body        = element(data.kubectl_file_documents.tekton_triggers_interceptors.documents, count.index)
   wait_for_rollout = false
+}
+
+# Service account and credentials
+
+resource "kubernetes_service_account" "cicd_bot_service_account" {
+  metadata {
+    namespace = "tekton-pipelines"
+    name      = "cicd-bot"
+  }
+  secret {
+    name = "cicd-bot-ssh-key"
+  }
+}
+
+resource "kubernetes_secret" "cicd_bot_ssh_key" {
+  type = "kubernetes.io/ssh-auth"
+  metadata {
+    name      = "cicd-bot-ssh-key"
+    namespace = "tekton-pipelines"
+    annotations = {
+      "tekton.dev/git-0" = "github.com"
+    }
+  }
+  binary_data = {
+    ssh-privatekey = var.cicd_bot_ssh_private_key_base_64
+    known_hosts    = var.github_known_hosts_base_64
+  }
+}
+
+resource "google_service_account" "cicd_bot_service_account" {
+  project      = var.project
+  account_id   = kubernetes_service_account.cicd_bot_service_account.metadata[0].name
+  display_name = "Certificate Manager Service Account"
+}
+
+resource "google_service_account_iam_member" "service_account_iam_workload_identity_user_binding" {
+  service_account_id = google_service_account.cicd_bot_service_account.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "serviceAccount:${var.project}.svc.id.goog[${kubernetes_service_account.cicd_bot_service_account.metadata[0].namespace}/${kubernetes_service_account.cicd_bot_service_account.metadata[0].name}]"
+}
+
+resource "google_project_iam_member" "service_account_dns_record_sets_binding" {
+  project = var.project
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:${google_service_account.cicd_bot_service_account.email}"
 }
 
 # Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
