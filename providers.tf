@@ -17,6 +17,9 @@ provider "helm" {
     client_key             = module.cluster.cluster_client_key
     cluster_ca_certificate = module.cluster.cluster_ca_certificate
   }
+  experiments {
+    manifest = true
+  }
 }
 
 provider "kubectl" {

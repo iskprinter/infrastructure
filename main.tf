@@ -7,12 +7,16 @@ terraform {
 data "google_client_config" "current" {}
 
 module "cluster" {
-  source         = "./modules/cluster/"
-  project        = var.project
-  location       = "${var.region}-a"
-  min_node_count = var.min_node_count
-  max_node_count = var.max_node_count
-  access_token   = data.google_client_config.current.access_token
+  source             = "./modules/cluster/"
+  project            = var.project
+  location           = "${var.region}-a"
+  min_node_2gb_count = var.min_node_2gb_count
+  max_node_2gb_count = var.max_node_2gb_count
+  min_node_4gb_count = var.min_node_4gb_count
+  max_node_4gb_count = var.max_node_4gb_count
+  min_node_8gb_count = var.min_node_8gb_count
+  max_node_8gb_count = var.max_node_8gb_count
+  access_token       = data.google_client_config.current.access_token
 }
 
 module "ingress" {
@@ -62,6 +66,7 @@ module "cicd" {
   dns_managed_zone_name                 = module.dns.managed_zone_name
   github_known_hosts_base_64            = var.github_known_hosts_base_64
   ingress_ip                            = module.ingress.ip
+  kaniko_version                        = var.kaniko_version
   project                               = var.project
   region                                = var.region
   tekton_dashboard_version              = var.tekton_dashboard_version
