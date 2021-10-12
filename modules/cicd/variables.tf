@@ -45,6 +45,10 @@ variable "ingress_ip" {
   type = string
 }
 
+variable "kaniko_version" {
+  type = string
+}
+
 variable "project" {
   type = string
 }

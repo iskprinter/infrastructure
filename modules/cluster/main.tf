@@ -28,14 +28,39 @@ resource "google_container_cluster" "general_purpose" {
   }
 }
 
-resource "google_container_node_pool" "gke_node_pool" {
+resource "google_container_node_pool" "pool_2gb" {
   project  = var.project
-  name     = "node-pool-of-${google_container_cluster.general_purpose.name}"
+  name     = "pool-2gb"
   location = var.location
   cluster  = google_container_cluster.general_purpose.name
+  initial_node_count = 1
   autoscaling {
-    min_node_count = var.min_node_count
-    max_node_count = var.max_node_count
+    min_node_count = var.min_node_2gb_count
+    max_node_count = var.max_node_2gb_count
+  }
+  node_config {
+    preemptible     = true
+    machine_type    = "e2-small"
+    disk_size_gb    = 32
+    service_account = google_service_account.gke.email
+    oauth_scopes = [
+      "https://www.googleapis.com/auth/cloud-platform"
+    ]
+    workload_metadata_config {
+      mode = "GKE_METADATA"
+    }
+  }
+}
+
+resource "google_container_node_pool" "pool_4gb" {
+  project  = var.project
+  name     = "pool-4gb"
+  location = var.location
+  cluster  = google_container_cluster.general_purpose.name
+  initial_node_count = 1
+  autoscaling {
+    min_node_count = var.min_node_4gb_count
+    max_node_count = var.max_node_4gb_count
   }
   node_config {
     preemptible     = true
@@ -46,7 +71,31 @@ resource "google_container_node_pool" "gke_node_pool" {
       "https://www.googleapis.com/auth/cloud-platform"
     ]
     workload_metadata_config {
-      node_metadata = "GKE_METADATA_SERVER"
+      mode = "GKE_METADATA"
+    }
+  }
+}
+
+resource "google_container_node_pool" "pool_8gb" {
+  project  = var.project
+  name     = "pool-8gb"
+  location = var.location
+  cluster  = google_container_cluster.general_purpose.name
+  initial_node_count = 1
+  autoscaling {
+    min_node_count = var.min_node_8gb_count
+    max_node_count = var.max_node_8gb_count
+  }
+  node_config {
+    preemptible     = true
+    machine_type    = "e2-standard-2"
+    disk_size_gb    = 32
+    service_account = google_service_account.gke.email
+    oauth_scopes = [
+      "https://www.googleapis.com/auth/cloud-platform"
+    ]
+    workload_metadata_config {
+      mode = "GKE_METADATA"
     }
   }
 }

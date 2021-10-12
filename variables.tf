@@ -11,14 +11,34 @@ variable "region" {
   default = "us-west1"
 }
 
-variable "min_node_count" {
+variable "min_node_2gb_count" {
   type    = number
-  default = 2
+  default = 0
 }
 
-variable "max_node_count" {
+variable "max_node_2gb_count" {
   type    = number
-  default = 4
+  default = 1
+}
+
+variable "min_node_4gb_count" {
+  type    = number
+  default = 0
+}
+
+variable "max_node_4gb_count" {
+  type    = number
+  default = 1
+}
+
+variable "min_node_8gb_count" {
+  type    = number
+  default = 0
+}
+
+variable "max_node_8gb_count" {
+  type    = number
+  default = 1
 }
 
 # Cleanup
@@ -67,6 +87,11 @@ variable "cicd_bot_ssh_private_key_base_64" {
 
 variable "github_known_hosts_base_64" {
   type = string
+}
+
+variable "kaniko_version" {
+  type = string
+  default = "1.3.0"
 }
 
 variable "tekton_pipeline_version" {
