@@ -4,7 +4,7 @@ set -eux
 
 # Clean up completed pipeline resources (pods and pvcs)
 echo "Deleting tekton pods and pvcs in namespace tekton-pipelines..."
-completed_tekton_pipelines_json=($(
+completed_tekton_pipelines_json=$(
     kubectl -n tekton-pipelines get pipelineruns -o json \
     | jq -cM '
         .items 
@@ -16,7 +16,7 @@ completed_tekton_pipelines_json=($(
             ) | .metadata.name
         )
     '
-))
+)
 completed_tekton_pods=($(
     kubectl -n tekton-pipelines get pods -o json \
         | jq -r --argjson completed_tekton_pipelines "$completed_tekton_pipelines_json" '

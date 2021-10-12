@@ -883,6 +883,11 @@ resource "kubernetes_role" "tekton_cleanup_role" {
     name      = "tekton-cleanup"
   }
   rule {
+    api_groups = ["tekton.dev"]
+    resources  = ["pipelineruns"]
+    verbs      = ["list"]
+  }
+  rule {
     api_groups = [""]
     resources  = ["pods", "persistentvolumeclaims"]
     verbs      = ["get", "list", "delete", "deletecollection"]
