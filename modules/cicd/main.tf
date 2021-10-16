@@ -432,7 +432,7 @@ resource "kubectl_manifest" "trigger_github_image_pr" {
       bindings = [
         {
           kind = "TriggerBinding"
-          ref  = "github"
+          ref  = "github-pr"
         }
       ]
       template = {
@@ -494,7 +494,7 @@ resource "kubectl_manifest" "trigger_github_release_pr" {
       bindings = [
         {
           kind = "TriggerBinding"
-          ref  = "github"
+          ref  = "github-pr"
         }
       ]
       template = {
@@ -556,7 +556,7 @@ resource "kubectl_manifest" "trigger_github_release_push" {
       bindings = [
         {
           kind = "TriggerBinding"
-          ref  = "github"
+          ref  = "github-push"
         }
       ]
       template = {
@@ -569,7 +569,7 @@ resource "kubectl_manifest" "trigger_github_release_push" {
 # TriggerBindings
 
 # Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/v1beta1/github/github-eventlistener-interceptor.yaml
-resource "kubectl_manifest" "trigger_binding_github" {
+resource "kubectl_manifest" "trigger_binding_github_pr" {
   depends_on = [
     kubectl_manifest.tekton_triggers,
     kubectl_manifest.tekton_triggers_interceptors
@@ -579,7 +579,7 @@ resource "kubectl_manifest" "trigger_binding_github" {
     kind       = "TriggerBinding"
     metadata = {
       namespace = "tekton-pipelines"
-      name      = "github"
+      name      = "github-pr"
     }
     spec = {
       params = [
@@ -598,6 +598,37 @@ resource "kubectl_manifest" "trigger_binding_github" {
         {
           name  = "github-status-url"
           value = "$(body.pull_request.statuses_url)"
+        }
+      ]
+    }
+  })
+}
+
+resource "kubectl_manifest" "trigger_binding_github_push" {
+  depends_on = [
+    kubectl_manifest.tekton_triggers,
+    kubectl_manifest.tekton_triggers_interceptors
+  ]
+  yaml_body = yamlencode({
+    apiVersion = "triggers.tekton.dev/v1beta1"
+    kind       = "TriggerBinding"
+    metadata = {
+      namespace = "tekton-pipelines"
+      name      = "github-push"
+    }
+    spec = {
+      params = [
+        {
+          name  = "repo-name"
+          value = "$(body.repository.name)"
+        },
+        {
+          name  = "revision"
+          value = "$(body.head_commit.id)"
+        },
+        {
+          name  = "repo-url"
+          value = "$(body.repository.ssh_url)"
         }
       ]
     }
@@ -1206,75 +1237,114 @@ resource "kubectl_manifest" "task_report_status" {
 }
 
 resource "kubectl_manifest" "task_github_checkout" {
-  yaml_body = <<-YAML
-    apiVersion: tekton.dev/v1beta1
-    kind: Task
-    metadata:
-      namespace: tekton-pipelines
-      name: github-checkout
-    spec:
-      params:
-      - name: repo-url
-        description: Repository URL to clone from.
-        type: string
-      - name: revision
-        description: Revision to checkout. (branch, tag, sha, ref, etc...)
-        type: string
-      workspaces:
-      - name: default
-        mountPath: "/workspace"
-      steps:
-      - name: github-checkout
-        image: "alpine/git:v2.32.0"
-        workingDir: $(workspaces.default.path)
-        env:
-        - name: REPO_URL
-          value: $(params.repo-url)
-        - name: REVISION
-          value: $(params.revision)
-        script: |
-          #!/bin/sh
-          set -eux
-          git init
-          git remote add origin "$${REPO_URL}"
-          git fetch origin "$${REVISION}" --depth=1
-          git reset --hard FETCH_HEAD
-  YAML
+  yaml_body = yamlencode({
+    apiVersion = "tekton.dev/v1beta1"
+    kind       = "Task"
+    metadata = {
+      "namespace" = "tekton-pipelines"
+      "name"      = "github-checkout"
+    }
+    spec = {
+      params = [
+        {
+          name        = "repo-url"
+          description = "Repository URL to clone from."
+          type        = "string"
+        },
+        {
+          name        = "revision"
+          description = "Revision to checkout. (branch, tag, sha, ref, etc...)"
+          type        = "string"
+        }
+      ]
+      "workspaces" = [
+        {
+          name      = "default"
+          mountPath = "/workspace"
+        }
+      ]
+      steps = [
+        {
+          name       = "github-checkout"
+          image      = "alpine/git:v2.32.0"
+          workingDir = "$(workspaces.default.path)"
+          env = [
+            {
+              name  = "REPO_URL"
+              value = "$(params.repo-url)"
+            },
+            {
+              name  = "REVISION"
+              value = "$(params.revision)"
+            }
+          ]
+          script = <<-EOF
+            #!/bin/sh
+            set -eux
+            git init
+            git remote add origin "$${REPO_URL}"
+            git fetch origin "$${REVISION}" --depth=1
+            git reset --hard FETCH_HEAD
+            EOF
+        }
+      ]
+    }
+  })
 }
 
 resource "kubectl_manifest" "task_build_and_push_image" {
-  yaml_body = <<-EOT
-    apiVersion: tekton.dev/v1beta1
-    kind: Task
-    metadata:
-      name: build-and-push-image
-      namespace: tekton-pipelines
-    spec:
-      params:
-      - description: The name of the image to build
-        name: image-name
-      - description: The tag of the image to build
-        name: image-tag
-      steps:
-      - name: build-and-push-image
-        env:
-        - name: IMAGE_NAME
-          value: $(params.image-name)
-        - name: IMAGE_TAG
-          value: $(params.image-tag)
-        image: gcr.io/kaniko-project/executor:v${var.kaniko_version}
-        workingDir: $(workspaces.default.path)
-        args: [
-          "--destination=${var.region}-docker.pkg.dev/${var.project}/${google_artifact_registry_repository.iskprinter.name}/$(IMAGE_NAME):$(IMAGE_TAG)",
-          "--cache=true"
-        ]
-        resources:
-          limits:
-            memory: "2Gi"
-      workspaces:
-      - mountPath: /workspace
-        name: default
-  EOT
+  yaml_body = yamlencode({
+    apiVersion = "tekton.dev/v1beta1"
+    kind       = "Task"
+    metadata = {
+      name      = "build-and-push-image"
+      namespace = "tekton-pipelines"
+    }
+    spec = {
+      params = [
+        {
+          description = "The name of the image to build"
+          name        = "image-name"
+        },
+        {
+          description = "The tag of the image to build"
+          name        = "image-tag"
+        }
+      ]
+      steps = [
+        {
+          name = "build-and-push-image"
+          env = [
+            {
+              name  = "IMAGE_NAME"
+              value = "$(params.image-name)"
+            },
+            {
+              name  = "IMAGE_TAG"
+              value = "$(params.image-tag)"
+            }
+          ]
+          image      = "gcr.io/kaniko-project/executor:v${var.kaniko_version}"
+          workingDir = "$(workspaces.default.path)"
+          args = [
+            "--destination=${var.region}-docker.pkg.dev/${var.project}/${google_artifact_registry_repository.iskprinter.name}/$(IMAGE_NAME):$(IMAGE_TAG)",
+            "--cache=true"
+          ]
+          resources = {
+            limits = {
+              memory = "2Gi"
+            }
+          }
+        }
+      ]
+      workspaces = [
+        {
+          mountPath = "/workspace"
+          name      = "default"
+        }
+      ]
+    }
+  })
 }
 
 resource "kubectl_manifest" "task_terraform_plan" {
