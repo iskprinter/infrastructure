@@ -2,6 +2,19 @@ variable "alpine_k8s_version" {
   type = string
 }
 
+variable "api_client_id" {
+  type = string
+}
+
+variable "api_client_credentials_secret_name" {
+  type = string
+}
+
+variable "api_client_secret_base64" {
+  type      = string
+  sensitive = true
+}
+
 variable "cicd_bot_github_username" {
   type = string
 }
@@ -11,24 +24,7 @@ variable "cicd_bot_personal_access_token_base64" {
   sensitive = true
 }
 
-variable "cicd_bot_ssh_private_key_base_64" {
-  type      = string
-  sensitive = true
-}
-
-variable "cluster_ca_certificate" {
-  type = string
-}
-
-variable "cluster_endpoint" {
-  type = string
-}
-
-variable "cluster_client_certificate" {
-  type = string
-}
-
-variable "cluster_client_key" {
+variable "cicd_bot_ssh_private_key_base64" {
   type      = string
   sensitive = true
 }
@@ -37,7 +33,11 @@ variable "dns_managed_zone_name" {
   type = string
 }
 
-variable "github_known_hosts_base_64" {
+variable "cicd_bot_name" {
+  type = string
+}
+
+variable "github_known_hosts_base64" {
   type = string
 }
 
@@ -46,6 +46,14 @@ variable "ingress_ip" {
 }
 
 variable "kaniko_version" {
+  type = string
+}
+
+variable "mongodb_connection_secret_name" {
+  type = string
+}
+
+variable "mongodb_connection_url" {
   type = string
 }
 
@@ -66,5 +74,9 @@ variable "tekton_pipeline_version" {
 }
 
 variable "tekton_triggers_version" {
+  type = string
+}
+
+variable "terraform_version" {
   type = string
 }
