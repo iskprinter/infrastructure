@@ -52,27 +52,27 @@ resource "kubernetes_role" "releaser" {
   rule {
     api_groups = ["apps"]
     resources  = ["deployments"]
-    verbs      = ["create", "get", "update", "delete"]
+    verbs      = ["create", "get", "patch", "update", "delete"]
   }
   rule {
     api_groups = [""]
     resources  = ["configmaps"]
-    verbs      = ["create", "get", "update", "delete"]
+    verbs      = ["create", "get", "patch", "update", "delete"]
   }
   rule {
     api_groups = [""]
     resources  = ["services"]
-    verbs      = ["create", "get", "update", "delete"]
+    verbs      = ["create", "get", "patch", "update", "delete"]
   }
   rule {
     api_groups = ["batch"]
     resources  = ["cronjobs"]
-    verbs      = ["create", "get", "update", "delete"]
+    verbs      = ["create", "get", "patch", "update", "delete"]
   }
   rule {
     api_groups = ["extensions"]
     resources  = ["ingresses"]
-    verbs      = ["create", "get", "update", "delete"]
+    verbs      = ["create", "get", "patch", "update", "delete"]
   }
   rule {
     api_groups = [""]
