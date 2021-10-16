@@ -4,13 +4,13 @@ resource "kubernetes_namespace" "iskprinter" {
   }
 }
 
-resource "kubernetes_manifest" "certificate" {
+resource "kubernetes_manifest" "certificate_iskprinter_com" {
   manifest = {
     apiVersion = "cert-manager.io/v1"
     kind       = "Certificate"
     metadata = {
       namespace = kubernetes_namespace.iskprinter.metadata[0].name
-      name      = "certificate"
+      name      = "iskprinter-com"
     }
     spec = {
       secretName = "tls-iskprinter-com"
@@ -19,9 +19,27 @@ resource "kubernetes_manifest" "certificate" {
         kind = "ClusterIssuer"
         name = "lets-encrypt-prod"
       }
-      dnsNames = [
-        "iskprinter.com"
-      ]
+      dnsNames = ["iskprinter.com"]
+    }
+  }
+}
+
+resource "kubernetes_manifest" "certificate_www_iskprinter_com" {
+  manifest = {
+    apiVersion = "cert-manager.io/v1"
+    kind       = "Certificate"
+    metadata = {
+      namespace = kubernetes_namespace.iskprinter.metadata[0].name
+      name      = "www-iskprinter-com"
+    }
+    spec = {
+      secretName = "tls-www-iskprinter-com"
+      issuerRef = {
+        # The issuer created previously
+        kind = "ClusterIssuer"
+        name = "lets-encrypt-prod"
+      }
+      dnsNames = ["www.iskprinter.com"]
     }
   }
 }
@@ -34,27 +52,27 @@ resource "kubernetes_role" "releaser" {
   rule {
     api_groups = ["apps"]
     resources  = ["deployments"]
-    verbs      = ["get"]
+    verbs      = ["create", "get", "update", "delete"]
   }
   rule {
     api_groups = [""]
     resources  = ["configmaps"]
-    verbs      = ["get"]
+    verbs      = ["create", "get", "update", "delete"]
   }
   rule {
     api_groups = [""]
     resources  = ["services"]
-    verbs      = ["get"]
+    verbs      = ["create", "get", "update", "delete"]
   }
   rule {
     api_groups = ["batch"]
     resources  = ["cronjobs"]
-    verbs      = ["get"]
+    verbs      = ["create", "get", "update", "delete"]
   }
   rule {
     api_groups = ["extensions"]
     resources  = ["ingresses"]
-    verbs      = ["get"]
+    verbs      = ["create", "get", "update", "delete"]
   }
   rule {
     api_groups = [""]
