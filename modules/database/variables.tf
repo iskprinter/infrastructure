@@ -1,19 +1,9 @@
-
-variable "cluster_endpoint" {
+variable "cicd_bot_name" {
   type = string
 }
 
-variable "cluster_ca_certificate" {
+variable "cicd_namespace" {
   type = string
-}
-
-variable "cluster_client_certificate" {
-  type = string
-}
-
-variable "cluster_client_key" {
-  type      = string
-  sensitive = true
 }
 
 variable "project" {

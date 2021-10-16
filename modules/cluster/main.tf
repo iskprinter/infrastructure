@@ -29,10 +29,10 @@ resource "google_container_cluster" "general_purpose" {
 }
 
 resource "google_container_node_pool" "pool_2gb" {
-  project  = var.project
-  name     = "pool-2gb"
-  location = var.location
-  cluster  = google_container_cluster.general_purpose.name
+  project            = var.project
+  name               = "pool-2gb"
+  location           = var.location
+  cluster            = google_container_cluster.general_purpose.name
   initial_node_count = 1
   autoscaling {
     min_node_count = var.min_node_2gb_count
@@ -53,10 +53,10 @@ resource "google_container_node_pool" "pool_2gb" {
 }
 
 resource "google_container_node_pool" "pool_4gb" {
-  project  = var.project
-  name     = "pool-4gb"
-  location = var.location
-  cluster  = google_container_cluster.general_purpose.name
+  project            = var.project
+  name               = "pool-4gb"
+  location           = var.location
+  cluster            = google_container_cluster.general_purpose.name
   initial_node_count = 1
   autoscaling {
     min_node_count = var.min_node_4gb_count
@@ -77,10 +77,10 @@ resource "google_container_node_pool" "pool_4gb" {
 }
 
 resource "google_container_node_pool" "pool_8gb" {
-  project  = var.project
-  name     = "pool-8gb"
-  location = var.location
-  cluster  = google_container_cluster.general_purpose.name
+  project            = var.project
+  name               = "pool-8gb"
+  location           = var.location
+  cluster            = google_container_cluster.general_purpose.name
   initial_node_count = 1
   autoscaling {
     min_node_count = var.min_node_8gb_count

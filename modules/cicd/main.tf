@@ -93,8 +93,8 @@ resource "kubernetes_secret" "cicd_bot_ssh_key" {
     }
   }
   binary_data = {
-    ssh-privatekey = var.cicd_bot_ssh_private_key_base_64
-    known_hosts    = var.github_known_hosts_base_64
+    ssh-privatekey = var.cicd_bot_ssh_private_key_base64
+    known_hosts    = var.github_known_hosts_base64
   }
 }
 
@@ -344,10 +344,13 @@ resource "kubectl_manifest" "event_listener_github" {
       serviceAccountName = "cicd-bot"
       triggers = [
         {
-          triggerRef = "github"
+          triggerRef = "github-image-pr"
         },
         {
-          triggerRef = "github-image-pr"
+          triggerRef = "github-release-pr"
+        },
+        {
+          triggerRef = "github-release-push"
         }
       ]
       resources = {
@@ -376,75 +379,6 @@ resource "kubectl_manifest" "event_listener_github" {
 }
 
 # Triggers
-
-# Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/v1beta1/github/github-eventlistener-interceptor.yaml
-resource "kubectl_manifest" "trigger_github" {
-  depends_on = [
-    kubectl_manifest.tekton_triggers,
-    kubectl_manifest.tekton_triggers_interceptors
-  ]
-  yaml_body = yamlencode({
-    apiVersion = "triggers.tekton.dev/v1beta1"
-    kind       = "Trigger"
-    metadata = {
-      namespace = "tekton-pipelines"
-      name      = "github"
-    }
-    spec = {
-      interceptors = [
-        {
-          ref = {
-            kind = "ClusterInterceptor"
-            name = "github"
-          }
-          params = [
-            {
-              name = "secretRef"
-              value = {
-                secretName = "github-webhook"
-                secretKey  = "secretToken"
-              }
-            },
-            {
-              name = "eventTypes"
-              value = [
-                "pull_request"
-                # "push",
-              ]
-            },
-          ]
-        },
-        {
-          name = "only when PRs are opened"
-          ref = {
-            kind = "ClusterInterceptor"
-            name = "cel"
-          }
-          params = [
-            {
-              name = "filter"
-              # value = "body.ref == 'refs/heads/main'"
-              value = "body.action in ['opened', 'synchronize', 'reopened']"
-            },
-            {
-              name = "filter"
-              value = "requestURL.parseURL().path == \"/\""
-            }
-          ]
-        }
-      ]
-      bindings = [
-        {
-          kind = "TriggerBinding"
-          ref  = "github"
-        }
-      ]
-      template = {
-        ref = "github"
-      }
-    }
-  })
-}
 
 resource "kubectl_manifest" "trigger_github_image_pr" {
   depends_on = [
@@ -489,7 +423,7 @@ resource "kubectl_manifest" "trigger_github_image_pr" {
           }
           params = [
             {
-              name = "filter"
+              name  = "filter"
               value = "(requestURL.parseURL().path == \"/github/images\") && (body.action in ['opened', 'synchronize', 'reopened'])"
             }
           ]
@@ -498,7 +432,7 @@ resource "kubectl_manifest" "trigger_github_image_pr" {
       bindings = [
         {
           kind = "TriggerBinding"
-          ref  = "github"
+          ref  = "github-pr"
         }
       ]
       template = {
@@ -508,10 +442,134 @@ resource "kubectl_manifest" "trigger_github_image_pr" {
   })
 }
 
+resource "kubectl_manifest" "trigger_github_release_pr" {
+  depends_on = [
+    kubectl_manifest.tekton_triggers,
+    kubectl_manifest.tekton_triggers_interceptors
+  ]
+  yaml_body = yamlencode({
+    apiVersion = "triggers.tekton.dev/v1beta1"
+    kind       = "Trigger"
+    metadata = {
+      namespace = "tekton-pipelines"
+      name      = "github-release-pr"
+    }
+    spec = {
+      interceptors = [
+        {
+          ref = {
+            kind = "ClusterInterceptor"
+            name = "github"
+          }
+          params = [
+            {
+              name = "secretRef"
+              value = {
+                secretName = "github-webhook"
+                secretKey  = "secretToken"
+              }
+            },
+            {
+              name = "eventTypes"
+              value = [
+                "pull_request"
+              ]
+            },
+          ]
+        },
+        {
+          name = "only when image PRs are opened"
+          ref = {
+            kind = "ClusterInterceptor"
+            name = "cel"
+          }
+          params = [
+            {
+              name  = "filter"
+              value = "(requestURL.parseURL().path == \"/github/release\") && (body.action in ['opened', 'synchronize', 'reopened'])"
+            }
+          ]
+        }
+      ]
+      bindings = [
+        {
+          kind = "TriggerBinding"
+          ref  = "github-pr"
+        }
+      ]
+      template = {
+        ref = "github-release-pr"
+      }
+    }
+  })
+}
+
+resource "kubectl_manifest" "trigger_github_release_push" {
+  depends_on = [
+    kubectl_manifest.tekton_triggers,
+    kubectl_manifest.tekton_triggers_interceptors
+  ]
+  yaml_body = yamlencode({
+    apiVersion = "triggers.tekton.dev/v1beta1"
+    kind       = "Trigger"
+    metadata = {
+      namespace = "tekton-pipelines"
+      name      = "github-release-push"
+    }
+    spec = {
+      interceptors = [
+        {
+          ref = {
+            kind = "ClusterInterceptor"
+            name = "github"
+          }
+          params = [
+            {
+              name = "secretRef"
+              value = {
+                secretName = "github-webhook"
+                secretKey  = "secretToken"
+              }
+            },
+            {
+              name = "eventTypes"
+              value = [
+                "push"
+              ]
+            },
+          ]
+        },
+        {
+          name = "only when image PRs are opened"
+          ref = {
+            kind = "ClusterInterceptor"
+            name = "cel"
+          }
+          params = [
+            {
+              name  = "filter"
+              value = "(requestURL.parseURL().path == \"/github/release\") && (body.ref == \"refs/heads/main\")"
+            }
+          ]
+        }
+      ]
+      bindings = [
+        {
+          kind = "TriggerBinding"
+          ref  = "github-push"
+        }
+      ]
+      template = {
+        ref = "github-release-push"
+      }
+    }
+  })
+}
+
 # TriggerBindings
 
 # Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/v1beta1/github/github-eventlistener-interceptor.yaml
-resource "kubectl_manifest" "trigger_binding_github" {
+resource "kubectl_manifest" "trigger_binding_github_pr" {
   depends_on = [
     kubectl_manifest.tekton_triggers,
     kubectl_manifest.tekton_triggers_interceptors
@@ -521,7 +579,7 @@ resource "kubectl_manifest" "trigger_binding_github" {
     kind       = "TriggerBinding"
     metadata = {
       namespace = "tekton-pipelines"
-      name      = "github"
+      name      = "github-pr"
     }
     spec = {
       params = [
@@ -546,89 +604,38 @@ resource "kubectl_manifest" "trigger_binding_github" {
   })
 }
 
-# TriggerTemplates
-
-# Based on the example at https://github.com/tektoncd/triggers/blob/main/docs/triggertemplates.md
-resource "kubectl_manifest" "trigger_template_github" {
+resource "kubectl_manifest" "trigger_binding_github_push" {
   depends_on = [
     kubectl_manifest.tekton_triggers,
     kubectl_manifest.tekton_triggers_interceptors
   ]
   yaml_body = yamlencode({
     apiVersion = "triggers.tekton.dev/v1beta1"
-    kind       = "TriggerTemplate"
+    kind       = "TriggerBinding"
     metadata = {
       namespace = "tekton-pipelines"
-      name      = "github"
+      name      = "github-push"
     }
     spec = {
       params = [
         {
-          name = "repo-name"
+          name  = "repo-name"
+          value = "$(body.repository.name)"
         },
         {
-          name = "repo-url"
+          name  = "revision"
+          value = "$(body.head_commit.id)"
         },
         {
-          name = "revision"
-        },
-        {
-          name = "github-status-url"
-        }
-      ]
-      resourcetemplates = [
-        {
-          apiVersion = "tekton.dev/v1beta1"
-          kind       = "PipelineRun"
-          metadata = {
-            generateName = "github-pr-"
-          }
-          spec = {
-            serviceAccountName = "cicd-bot"
-            pipelineRef = {
-              name = "github-pr"
-            }
-            params = [
-              {
-                name  = "image-name"
-                value = "$(tt.params.repo-name)"
-              },
-              {
-                name  = "repo-url"
-                value = "$(tt.params.repo-url)"
-              },
-              {
-                name  = "revision"
-                value = "$(tt.params.revision)"
-              },
-              {
-                name  = "github-status-url"
-                value = "$(tt.params.github-status-url)"
-              }
-            ]
-            workspaces = [
-              {
-                name = "default"
-                volumeClaimTemplate = {
-                  spec = {
-                    accessModes = [
-                      "ReadWriteOnce"
-                    ]
-                    resources = {
-                      requests = {
-                        storage = "512Mi"
-                      }
-                    }
-                  }
-                }
-              }
-            ]
-          }
+          name  = "repo-url"
+          value = "$(body.repository.ssh_url)"
         }
       ]
     }
   })
 }
+
+# TriggerTemplates
 
 resource "kubectl_manifest" "trigger_template_github_image_pr" {
   depends_on = [
@@ -711,160 +718,151 @@ resource "kubectl_manifest" "trigger_template_github_image_pr" {
   })
 }
 
-# Pipelines
-
-# Based on the example at https://tekton.dev/vault/pipelines-v0.26.0/pipelines/#pipelines
-resource "kubectl_manifest" "pipeline_github_pr" {
+resource "kubectl_manifest" "trigger_template_github_release_pr" {
   depends_on = [
     kubectl_manifest.tekton_triggers,
     kubectl_manifest.tekton_triggers_interceptors
   ]
   yaml_body = yamlencode({
-    apiVersion = "tekton.dev/v1beta1"
-    kind       = "Pipeline"
+    apiVersion = "triggers.tekton.dev/v1beta1"
+    kind       = "TriggerTemplate"
     metadata = {
       namespace = "tekton-pipelines"
-      name      = "github-pr"
+      name      = "github-release-pr"
     }
     spec = {
       params = [
         {
-          name        = "image-name"
-          type        = "string"
-          description = "The name of the repo to build"
+          name = "repo-name"
         },
         {
-          name        = "repo-url"
-          type        = "string"
-          description = "The URL of the repo to build"
+          name = "repo-url"
         },
         {
-          name        = "revision"
-          type        = "string"
-          description = "The revision to of the repo to build"
+          name = "revision"
         },
         {
-          name        = "github-status-url"
-          type        = "string"
-          description = "The GitHub status URL"
+          name = "github-status-url"
         }
       ]
-      workspaces = [
+      resourcetemplates = [
         {
-          name = "default" # Must match the name in the PipelineRun?
-        }
-      ]
-      tasks = [
-        {
-          name = "report-initial-status"
-          params = [
-            {
-              name  = "github-status-url"
-              value = "$(params.github-status-url)"
-            },
-            {
-              name  = "tekton-pipeline-status"
-              value = "None"
-            }
-          ]
-          taskRef = {
-            name = "report-status"
+          apiVersion = "tekton.dev/v1beta1"
+          kind       = "PipelineRun"
+          metadata = {
+            generateName = "github-release-pr-"
           }
-        },
-        {
-          name = "github-checkout"
-          taskRef = {
-            name = "github-checkout"
-          }
-          workspaces = [
-            {
-              name      = "default" # Must match what the git-clone task expects.
-              workspace = "default" # Must match above
+          spec = {
+            serviceAccountName = "cicd-bot"
+            pipelineRef = {
+              name = "github-release-pr"
             }
-          ]
-          params = [
-            {
-              name  = "repo-url"
-              value = "$(params.repo-url)"
-            },
-            {
-              name  = "revision"
-              value = "$(params.revision)"
-            }
-          ]
-        },
-        {
-          runAfter = [
-            "github-checkout"
-          ]
-          name = "construct-build-image"
-          params = [
-            {
-              name  = "build-image-name"
-              value = "$(params.image-name)-pipeline"
-            },
-            {
-              name  = "build-image-tag"
-              value = "$(params.revision)"
-            }
-          ]
-          workspaces = [
-            {
-              name      = "default"
-              workspace = "default" # Must match above
-            }
-          ]
-          taskRef = {
-            name = "construct-build-image"
-          }
-        },
-        {
-          runAfter = [
-            "construct-build-image"
-          ]
-          name = "run-build"
-          params = [
-            {
-              name  = "build-image-name"
-              value = "$(params.image-name)-pipeline"
-            },
-            {
-              name  = "build-image-tag"
-              value = "$(params.revision)"
-            }
-          ]
-          workspaces = [
-            {
-              name      = "default"
-              workspace = "default"
-            }
-          ]
-          taskRef = {
-            name = "run-build"
-          }
-        }
-      ]
-      finally = [
-        {
-          name = "report-final-status"
-          params = [
-            {
-              name  = "github-status-url"
-              value = "$(params.github-status-url)"
-            },
-            {
-              name  = "tekton-pipeline-status"
-              value = "$(tasks.status)"
-            }
-          ]
-          taskRef = {
-            name = "report-status"
+            params = [
+              {
+                name  = "repo-url"
+                value = "$(tt.params.repo-url)"
+              },
+              {
+                name  = "revision"
+                value = "$(tt.params.revision)"
+              },
+              {
+                name  = "github-status-url"
+                value = "$(tt.params.github-status-url)"
+              }
+            ]
+            workspaces = [
+              {
+                name = "default"
+                volumeClaimTemplate = {
+                  spec = {
+                    accessModes = [
+                      "ReadWriteOnce"
+                    ]
+                    resources = {
+                      requests = {
+                        storage = "512Mi"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
           }
         }
       ]
     }
   })
 }
+
+resource "kubectl_manifest" "trigger_template_github_release_push" {
+  depends_on = [
+    kubectl_manifest.tekton_triggers,
+    kubectl_manifest.tekton_triggers_interceptors
+  ]
+  yaml_body = yamlencode({
+    apiVersion = "triggers.tekton.dev/v1beta1"
+    kind       = "TriggerTemplate"
+    metadata = {
+      namespace = "tekton-pipelines"
+      name      = "github-release-push"
+    }
+    spec = {
+      params = [
+        {
+          name = "repo-url"
+        },
+        {
+          name = "revision"
+        }
+      ]
+      resourcetemplates = [
+        {
+          apiVersion = "tekton.dev/v1beta1"
+          kind       = "PipelineRun"
+          metadata = {
+            generateName = "github-release-push-"
+          }
+          spec = {
+            serviceAccountName = "cicd-bot"
+            pipelineRef = {
+              name = "github-release-push"
+            }
+            params = [
+              {
+                name  = "repo-url"
+                value = "$(tt.params.repo-url)"
+              },
+              {
+                name  = "revision"
+                value = "$(tt.params.revision)"
+              }
+            ]
+            workspaces = [
+              {
+                name = "default"
+                volumeClaimTemplate = {
+                  spec = {
+                    accessModes = [
+                      "ReadWriteOnce"
+                    ]
+                    resources = {
+                      requests = {
+                        storage = "512Mi"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  })
+}
+
+# Pipelines
 
 resource "kubectl_manifest" "pipeline_github_image_pr" {
   depends_on = [
@@ -947,6 +945,7 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
         },
         {
           runAfter = [
+            "report-initial-status",
             "github-checkout"
           ]
           name = "build-and-push-image"
@@ -993,144 +992,193 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
   })
 }
 
-resource "kubectl_manifest" "task_github_checkout" {
-  yaml_body = <<-YAML
-    apiVersion: tekton.dev/v1beta1
-    kind: Task
-    metadata:
-      namespace: tekton-pipelines
-      name: github-checkout
-    spec:
-      params:
-      - name: repo-url
-        description: Repository URL to clone from.
-        type: string
-      - name: revision
-        description: Revision to checkout. (branch, tag, sha, ref, etc...)
-        type: string
-      workspaces:
-      - name: default
-        mountPath: "/workspace"
-      steps:
-      - name: github-checkout
-        image: "alpine/git:v2.32.0"
-        workingDir: $(workspaces.default.path)
-        env:
-        - name: REPO_URL
-          value: $(params.repo-url)
-        - name: REVISION
-          value: $(params.revision)
-        script: |
-          #!/bin/sh
-          set -eux
-          git init
-          git remote add origin "$${REPO_URL}"
-          git fetch origin "$${REVISION}" --depth=1
-          git reset --hard FETCH_HEAD
-  YAML
+resource "kubectl_manifest" "pipeline_github_release_pr" {
+  depends_on = [
+    kubectl_manifest.tekton_triggers,
+    kubectl_manifest.tekton_triggers_interceptors
+  ]
+  yaml_body = yamlencode({
+    apiVersion = "tekton.dev/v1beta1"
+    kind       = "Pipeline"
+    metadata = {
+      namespace = "tekton-pipelines"
+      name      = "github-release-pr"
+    }
+    spec = {
+      params = [
+        {
+          name        = "repo-url"
+          type        = "string"
+          description = "The URL of the repo to build"
+        },
+        {
+          name        = "revision"
+          type        = "string"
+          description = "The revision to of the repo to build"
+        },
+        {
+          name        = "github-status-url"
+          type        = "string"
+          description = "The GitHub status URL"
+        }
+      ]
+      workspaces = [
+        {
+          name = "default" # Must match the name in the PipelineRun?
+        }
+      ]
+      tasks = [
+        {
+          name = "report-initial-status"
+          params = [
+            {
+              name  = "github-status-url"
+              value = "$(params.github-status-url)"
+            },
+            {
+              name  = "tekton-pipeline-status"
+              value = "None"
+            }
+          ]
+          taskRef = {
+            name = "report-status"
+          }
+        },
+        {
+          name = "github-checkout"
+          taskRef = {
+            name = "github-checkout"
+          }
+          params = [
+            {
+              name  = "repo-url"
+              value = "$(params.repo-url)"
+            },
+            {
+              name  = "revision"
+              value = "$(params.revision)"
+            }
+          ]
+          workspaces = [
+            {
+              name      = "default" # Must match what the git-clone task expects.
+              workspace = "default" # Must match above
+            }
+          ]
+        },
+        {
+          runAfter = [
+            "report-initial-status",
+            "github-checkout"
+          ]
+          name = "terraform-plan"
+          workspaces = [
+            {
+              name      = "default"
+              workspace = "default" # Must match above
+            }
+          ]
+          taskRef = {
+            name = "terraform-plan"
+          }
+        }
+      ]
+      finally = [
+        {
+          name = "report-final-status"
+          params = [
+            {
+              name  = "github-status-url"
+              value = "$(params.github-status-url)"
+            },
+            {
+              name  = "tekton-pipeline-status"
+              value = "$(tasks.status)"
+            }
+          ]
+          taskRef = {
+            name = "report-status"
+          }
+        }
+      ]
+    }
+  })
 }
 
-resource "kubectl_manifest" "task_construct_build_image" {
-  yaml_body = <<-EOT
-    apiVersion: tekton.dev/v1beta1
-    kind: Task
-    metadata:
-      name: construct-build-image
-      namespace: tekton-pipelines
-    spec:
-      params:
-      - description: The name of the build image to use
-        name: build-image-name
-      - description: The tag of the build image to use
-        name: build-image-tag
-      results:
-      - description: The name and tag of the image to run
-        name: build-image-name-and-tag
-      steps:
-      - name: construct-build-image
-        env:
-        - name: IMAGE_NAME
-          value: $(params.build-image-name)
-        - name: IMAGE_TAG
-          value: $(params.build-image-tag)
-        image: gcr.io/kaniko-project/executor:v${var.kaniko_version}
-        workingDir: $(workspaces.default.path)
-        args: [
-          "--context=./cicd",
-          "--destination=${var.region}-docker.pkg.dev/${var.project}/${google_artifact_registry_repository.iskprinter.name}/$(IMAGE_NAME):$(IMAGE_TAG)",
-          "--cache=true"
-        ]
-      workspaces:
-      - mountPath: /workspace
-        name: default
-  EOT
+resource "kubectl_manifest" "pipeline_github_release_push" {
+  depends_on = [
+    kubectl_manifest.tekton_triggers,
+    kubectl_manifest.tekton_triggers_interceptors
+  ]
+  yaml_body = yamlencode({
+    apiVersion = "tekton.dev/v1beta1"
+    kind       = "Pipeline"
+    metadata = {
+      namespace = "tekton-pipelines"
+      name      = "github-release-push"
+    }
+    spec = {
+      params = [
+        {
+          name        = "repo-url"
+          type        = "string"
+          description = "The URL of the repo to build"
+        },
+        {
+          name        = "revision"
+          type        = "string"
+          description = "The revision to of the repo to build"
+        }
+      ]
+      workspaces = [
+        {
+          name = "default" # Must match the name in the PipelineRun?
+        }
+      ]
+      tasks = [
+        {
+          name = "github-checkout"
+          taskRef = {
+            name = "github-checkout"
+          }
+          params = [
+            {
+              name  = "repo-url"
+              value = "$(params.repo-url)"
+            },
+            {
+              name  = "revision"
+              value = "$(params.revision)"
+            }
+          ]
+          workspaces = [
+            {
+              name      = "default" # Must match what the git-clone task expects.
+              workspace = "default" # Must match above
+            }
+          ]
+        },
+        {
+          runAfter = [
+            "github-checkout"
+          ]
+          name = "terraform-apply"
+          workspaces = [
+            {
+              name      = "default"
+              workspace = "default" # Must match above
+            }
+          ]
+          taskRef = {
+            name = "terraform-apply"
+          }
+        }
+      ]
+    }
+  })
 }
 
-resource "kubectl_manifest" "task_build_and_push_image" {
-  yaml_body = <<-EOT
-    apiVersion: tekton.dev/v1beta1
-    kind: Task
-    metadata:
-      name: build-and-push-image
-      namespace: tekton-pipelines
-    spec:
-      params:
-      - description: The name of the image to build
-        name: image-name
-      - description: The tag of the image to build
-        name: image-tag
-      steps:
-      - name: build-and-push-image
-        env:
-        - name: IMAGE_NAME
-          value: $(params.image-name)
-        - name: IMAGE_TAG
-          value: $(params.image-tag)
-        image: gcr.io/kaniko-project/executor:v${var.kaniko_version}
-        workingDir: $(workspaces.default.path)
-        args: [
-          "--destination=${var.region}-docker.pkg.dev/${var.project}/${google_artifact_registry_repository.iskprinter.name}/$(IMAGE_NAME):$(IMAGE_TAG)",
-          "--cache=true"
-        ]
-        resources:
-          limits:
-            memory: "2Gi"
-      workspaces:
-      - mountPath: /workspace
-        name: default
-  EOT
-}
-
-resource "kubectl_manifest" "task_run_build" {
-  yaml_body = <<-YAML
-    apiVersion: tekton.dev/v1beta1
-    kind: Task
-    metadata:
-      name: run-build
-      namespace: tekton-pipelines
-    spec:
-      params:
-      - description: The name of the build image to use
-        name: build-image-name
-      - description: The tag of the build image to use
-        name: build-image-tag
-      steps:
-      - image: "${var.region}-docker.pkg.dev/${var.project}/${google_artifact_registry_repository.iskprinter.name}/$(params.build-image-name):$(params.build-image-tag)"
-        name: run-build
-        script: |
-          #!/bin/sh
-          set -eux
-          if ! [ -d ./cicd ] || ! [ -f ./cicd/tekton.sh ]; then
-            echo 'Error: unable to find a ./cicd/tekton.sh file to run' >2
-            exit 1
-          fi
-          ./cicd/tekton.sh
-        workingDir: $(workspaces.default.path)
-      workspaces:
-      - mountPath: /workspace
-        name: default
-  YAML
-}
+# Tasks
 
 resource "kubectl_manifest" "task_report_status" {
   yaml_body = yamlencode({
@@ -1188,7 +1236,224 @@ resource "kubectl_manifest" "task_report_status" {
   })
 }
 
+resource "kubectl_manifest" "task_github_checkout" {
+  yaml_body = yamlencode({
+    apiVersion = "tekton.dev/v1beta1"
+    kind       = "Task"
+    metadata = {
+      "namespace" = "tekton-pipelines"
+      "name"      = "github-checkout"
+    }
+    spec = {
+      params = [
+        {
+          name        = "repo-url"
+          description = "Repository URL to clone from."
+          type        = "string"
+        },
+        {
+          name        = "revision"
+          description = "Revision to checkout. (branch, tag, sha, ref, etc...)"
+          type        = "string"
+        }
+      ]
+      "workspaces" = [
+        {
+          name      = "default"
+          mountPath = "/workspace"
+        }
+      ]
+      steps = [
+        {
+          name       = "github-checkout"
+          image      = "alpine/git:v2.32.0"
+          workingDir = "$(workspaces.default.path)"
+          env = [
+            {
+              name  = "REPO_URL"
+              value = "$(params.repo-url)"
+            },
+            {
+              name  = "REVISION"
+              value = "$(params.revision)"
+            }
+          ]
+          script = <<-EOF
+            #!/bin/sh
+            set -eux
+            git init
+            git remote add origin "$${REPO_URL}"
+            git fetch origin "$${REVISION}" --depth=1
+            git reset --hard FETCH_HEAD
+            EOF
+        }
+      ]
+    }
+  })
+}
 
+resource "kubectl_manifest" "task_build_and_push_image" {
+  yaml_body = yamlencode({
+    apiVersion = "tekton.dev/v1beta1"
+    kind       = "Task"
+    metadata = {
+      name      = "build-and-push-image"
+      namespace = "tekton-pipelines"
+    }
+    spec = {
+      params = [
+        {
+          description = "The name of the image to build"
+          name        = "image-name"
+        },
+        {
+          description = "The tag of the image to build"
+          name        = "image-tag"
+        }
+      ]
+      steps = [
+        {
+          name = "build-and-push-image"
+          env = [
+            {
+              name  = "IMAGE_NAME"
+              value = "$(params.image-name)"
+            },
+            {
+              name  = "IMAGE_TAG"
+              value = "$(params.image-tag)"
+            }
+          ]
+          image      = "gcr.io/kaniko-project/executor:v${var.kaniko_version}"
+          workingDir = "$(workspaces.default.path)"
+          args = [
+            "--destination=${var.region}-docker.pkg.dev/${var.project}/${google_artifact_registry_repository.iskprinter.name}/$(IMAGE_NAME):$(IMAGE_TAG)",
+            "--cache=true"
+          ]
+          resources = {
+            limits = {
+              memory = "2Gi"
+            }
+          }
+        }
+      ]
+      workspaces = [
+        {
+          mountPath = "/workspace"
+          name      = "default"
+        }
+      ]
+    }
+  })
+}
+
+resource "kubectl_manifest" "task_terraform_plan" {
+  yaml_body = yamlencode({
+    apiVersion = "tekton.dev/v1beta1"
+    kind       = "Task"
+    metadata = {
+      name      = "terraform-plan"
+      namespace = "tekton-pipelines"
+    }
+    spec = {
+      steps = [
+        {
+          name = "terraform-plan"
+          env = [
+            {
+              name  = "TF_VAR_api_client_id"
+              value = "${var.api_client_id}"
+            },
+            {
+              name  = "TF_VAR_api_client_credentials_secret_name"
+              value = "${var.api_client_credentials_secret_name}"
+            },
+            {
+              name  = "TF_VAR_api_client_secret_base64"
+              value = "${var.api_client_secret_base64}"
+            },
+            {
+              name  = "TF_VAR_mongodb_connection_secret_name"
+              value = "${var.mongodb_connection_secret_name}"
+            },
+            {
+              name  = "TF_VAR_mongodb_connection_url_base64"
+              value = "${base64encode(var.mongodb_connection_url)}"
+            }
+          ]
+          image      = "hashicorp/terraform:${var.terraform_version}"
+          workingDir = "$(workspaces.default.path)"
+          script     = <<-EOF
+            #!/bin/sh
+            set -eux
+            terraform init -lockfile=readonly
+            terraform plan
+            EOF
+        }
+      ]
+      workspaces = [
+        {
+          mountPath = "/workspace"
+          name      = "default"
+        }
+      ]
+    }
+  })
+}
+
+resource "kubectl_manifest" "task_terraform_apply" {
+  yaml_body = yamlencode({
+    apiVersion = "tekton.dev/v1beta1"
+    kind       = "Task"
+    metadata = {
+      name      = "terraform-apply"
+      namespace = "tekton-pipelines"
+    }
+    spec = {
+      steps = [
+        {
+          name = "terraform-apply"
+          env = [
+            {
+              name  = "TF_VAR_api_client_id"
+              value = "${var.api_client_id}"
+            },
+            {
+              name  = "TF_VAR_api_client_credentials_secret_name"
+              value = "${var.api_client_credentials_secret_name}"
+            },
+            {
+              name  = "TF_VAR_api_client_secret_base64"
+              value = "${var.api_client_secret_base64}"
+            },
+            {
+              name  = "TF_VAR_mongodb_connection_secret_name"
+              value = "${var.mongodb_connection_secret_name}"
+            },
+            {
+              name  = "TF_VAR_mongodb_connection_url_base64"
+              value = "${base64encode(var.mongodb_connection_url)}"
+            }
+          ]
+          image      = "hashicorp/terraform:${var.terraform_version}"
+          workingDir = "$(workspaces.default.path)"
+          script     = <<-EOF
+            #!/bin/sh
+            set -eux
+            terraform init -lockfile=readonly
+            terraform apply -auto-approve
+            EOF
+        }
+      ]
+      workspaces = [
+        {
+          mountPath = "/workspace"
+          name      = "default"
+        }
+      ]
+    }
+  })
+}
 
 # Cleanup (tekton does not clean up task pods or workspace PVCs)
 

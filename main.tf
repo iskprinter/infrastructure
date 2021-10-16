@@ -1,6 +1,7 @@
 terraform {
   backend "gcs" {
-    bucket = "iskprinter-terraform-state"
+    bucket = "iskprinter-tf-state-prod"
+    prefix = "infrastructure"
   }
 }
 
@@ -20,12 +21,8 @@ module "cluster" {
 }
 
 module "ingress" {
-  source                     = "./modules/ingress"
-  cluster_endpoint           = module.cluster.cluster_endpoint
-  cluster_client_certificate = module.cluster.cluster_client_certificate
-  cluster_client_key         = module.cluster.cluster_client_key
-  cluster_ca_certificate     = module.cluster.cluster_ca_certificate
-  nginx_version              = var.nginx_version
+  source        = "./modules/ingress"
+  nginx_version = var.nginx_version
 }
 
 module "dns" {
@@ -35,53 +32,54 @@ module "dns" {
 }
 
 module "cert_manager" {
-  source                     = "./modules/cert_manager/"
-  project                    = var.project
-  cluster_ca_certificate     = module.cluster.cluster_ca_certificate
-  cluster_client_certificate = module.cluster.cluster_client_certificate
-  cluster_client_key         = module.cluster.cluster_client_key
-  cluster_endpoint           = module.cluster.cluster_endpoint
-  cert_manager_version       = var.cert_manager_version
+  source               = "./modules/cert_manager/"
+  project              = var.project
+  cert_manager_version = var.cert_manager_version
 }
 
 module "preemption_cleanup" {
-  source                     = "./modules/preemption_cleanup/"
-  alpine_k8s_version         = var.alpine_k8s_version
-  cluster_ca_certificate     = module.cluster.cluster_ca_certificate
-  cluster_client_certificate = module.cluster.cluster_client_certificate
-  cluster_client_key         = module.cluster.cluster_client_key
-  cluster_endpoint           = module.cluster.cluster_endpoint
+  source             = "./modules/preemption_cleanup/"
+  alpine_k8s_version = var.alpine_k8s_version
 }
 
 module "cicd" {
   source                                = "./modules/cicd/"
   alpine_k8s_version                    = var.alpine_k8s_version
+  api_client_credentials_secret_name    = var.api_client_credentials_secret_name
+  api_client_id                         = var.api_client_id
+  api_client_secret_base64              = var.api_client_secret_base64
   cicd_bot_github_username              = var.cicd_bot_github_username
+  cicd_bot_name                         = var.cicd_bot_name
   cicd_bot_personal_access_token_base64 = var.cicd_bot_personal_access_token_base64
-  cicd_bot_ssh_private_key_base_64      = var.cicd_bot_ssh_private_key_base_64
-  cluster_ca_certificate                = module.cluster.cluster_ca_certificate
-  cluster_client_certificate            = module.cluster.cluster_client_certificate
-  cluster_client_key                    = module.cluster.cluster_client_key
-  cluster_endpoint                      = module.cluster.cluster_endpoint
+  cicd_bot_ssh_private_key_base64       = var.cicd_bot_ssh_private_key_base64
   dns_managed_zone_name                 = module.dns.managed_zone_name
-  github_known_hosts_base_64            = var.github_known_hosts_base_64
+  github_known_hosts_base64             = var.github_known_hosts_base64
   ingress_ip                            = module.ingress.ip
   kaniko_version                        = var.kaniko_version
+  mongodb_connection_secret_name        = var.mongodb_connection_secret_name
+  mongodb_connection_url                = module.database.mongodb_connection_url
   project                               = var.project
   region                                = var.region
   tekton_dashboard_version              = var.tekton_dashboard_version
   tekton_pipeline_version               = var.tekton_pipeline_version
   tekton_triggers_version               = var.tekton_triggers_version
+  terraform_version                     = var.terraform_version
 }
 
 module "database" {
   source                       = "./modules/database/"
-  cluster_ca_certificate       = module.cluster.cluster_ca_certificate
-  cluster_client_certificate   = module.cluster.cluster_client_certificate
-  cluster_client_key           = module.cluster.cluster_client_key
-  cluster_endpoint             = module.cluster.cluster_endpoint
+  cicd_bot_name                = var.cicd_bot_name
+  cicd_namespace               = module.cicd.cicd_namespace
   neo4j_persistent_volume_size = var.neo4j_persistent_volume_size
   neo4j_version                = var.neo4j_version
   project                      = var.project
   region                       = var.region
+}
+
+module "iskprinter" {
+  source                             = "./modules/iskprinter"
+  api_client_credentials_secret_name = var.api_client_credentials_secret_name
+  cicd_bot_name                      = var.cicd_bot_name
+  cicd_namespace                     = module.cicd.cicd_namespace
+  mongodb_connection_secret_name     = var.mongodb_connection_secret_name
 }

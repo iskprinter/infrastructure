@@ -6,19 +6,20 @@ Deploys a Kubernetes cluster and supporting resources
 
 1. Create a GCS bucket for use as a terraform backend.
     ```bash
-    gsutil mb gs://iskprinter-terraform-state --location=US
+    gsutil mb -l US gs://iskprinter-tf-state-prod
     ```
 
 1. Enable versioning on the bucket.
     ```bash
-    gsutil versioning set on gs://iskprinter-terraform-state
+    gsutil versioning set on gs://iskprinter-tf-state-prod
     ```
 
 1. Export the pre-encoded SSH key and the pre-encoded `known_hosts` content that the service account will use to pull from GitHub.
     ```bash
-    export TF_VAR_cicd_bot_ssh_private_key_base_64=$(cat "${HOME}/.ssh/IskprinterGitBot.id_rsa" | base64)
-    export TF_VAR_github_known_hosts_base_64=$(cat "${HOME}/.ssh/known_hosts" | grep 'github' | base64)
+    export TF_VAR_cicd_bot_ssh_private_key_base64=$(cat "${HOME}/.ssh/IskprinterGitBot.id_rsa" | base64)
+    export TF_VAR_github_known_hosts_base64=$(cat "${HOME}/.ssh/known_hosts" | grep 'github' | base64)
     export TF_VAR_cicd_bot_personal_access_token_base64=$(echo -n '<token>' | base64) # Use for GitHub API access only
+    export TF_VAR_api_client_secret_base64=$(echo -n '<secret>' | base64)
     ```
 
 1. Export the unencoded SSH key that the service account will use to push to Docker Hub.
@@ -32,18 +33,12 @@ Deploys a Kubernetes cluster and supporting resources
     terraform apply
     ```
 
-1. Configure your local `~/.kube/config` so that you can use kubectl with the cluster.
-    ```bash
-    
-    ```
-
 # How to make the application live
 
 1. List the nameservers of the managed zone
     ```bash
     gcloud dns managed-zones describe iskprinter-com
     ```
-    
 
 1. Set the nameservers on your DNS registrar to point to the GCP nameservers.
 

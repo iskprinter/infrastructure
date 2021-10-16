@@ -1,7 +1,9 @@
 locals {
+  admin_username     = "admin"
   namespace          = "database"
   neo4j_chart_name   = "neo4j"
   neo4j_release_name = "neo4j"
+  release            = "mongodb"
 }
 
 # Neo4J
@@ -53,7 +55,7 @@ resource "random_password" "mongodb" {
 }
 
 resource "helm_release" "mongodb_operator" {
-  name             = "mongodb"
+  name             = local.release
   chart            = "${path.module}/mongodb"
   namespace        = local.namespace
   create_namespace = true
@@ -117,12 +119,56 @@ resource "kubectl_manifest" "mongodb" {
 resource "kubernetes_secret" "mongodb_password" {
   # the user credentials will be generated from this secret
   # once the credentials are generated, this secret is no longer required
+  type = "kubernetes.io/basic-auth"
   metadata {
-    name = "admin-password"
+    namespace = "database"
+    name      = "admin-password"
   }
-  type = "Opaque"
   binary_data = {
+    username = base64encode(local.admin_username)
     password = base64encode(random_password.mongodb.result)
+  }
+}
+
+resource "kubernetes_secret" "iskprinter_mongodb" {
+  type = "kubernetes.io/basic-auth"
+  metadata {
+    namespace = "database"
+    name      = "iskprinter-credentials"
+  }
+  binary_data = {
+    username = base64encode(local.admin_username)
+    password = base64encode(random_password.mongodb.result)
+  }
+}
+
+resource "kubernetes_role" "mongodb_secret_reader" {
+  metadata {
+    namespace = "database"
+    name      = "mongodb-secret-reader"
+  }
+  rule {
+    api_groups     = [""]
+    resources      = ["secrets"]
+    resource_names = [kubernetes_secret.iskprinter_mongodb.metadata[0].name]
+    verbs          = ["get"]
+  }
+}
+
+resource "kubernetes_role_binding" "mongodb_secret_readers" {
+  metadata {
+    namespace = "database"
+    name      = "mongodb-secret-readers"
+  }
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "Role"
+    name      = "mongodb-secret-reader"
+  }
+  subject {
+    kind      = "ServiceAccount"
+    namespace = var.cicd_namespace
+    name      = var.cicd_bot_name
   }
 }
 
