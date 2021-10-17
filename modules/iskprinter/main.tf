@@ -4,6 +4,12 @@ resource "kubernetes_namespace" "iskprinter" {
   }
 }
 
+resource "google_project_iam_member" "service_account_dns_record_sets_binding" {
+  project = var.project
+  role    = "roles/dns.admin"
+  member  = "serviceAccount:${var.google_service_account_cicd_bot_email}"
+}
+
 resource "kubernetes_role" "releaser" {
   metadata {
     namespace = "iskprinter"
