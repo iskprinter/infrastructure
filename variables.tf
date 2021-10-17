@@ -45,7 +45,7 @@ variable "max_node_8gb_count" {
 
 variable "nginx_version" {
   type    = string
-  default = "0.10.1" # The helm chart version. Corresponds to Nginx 1.12.1.
+  default = "4.0.6" # The helm chart version
 }
 
 # Database
