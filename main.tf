@@ -70,7 +70,9 @@ module "database" {
   source                       = "./modules/database/"
   cicd_bot_name                = var.cicd_bot_name
   cicd_namespace               = module.cicd.cicd_namespace
+  mongodb_replicas             = var.mongodb_replicas
   neo4j_persistent_volume_size = var.neo4j_persistent_volume_size
+  neo4j_replicas               = var.neo4j_replicas
   neo4j_version                = var.neo4j_version
   project                      = var.project
   region                       = var.region
