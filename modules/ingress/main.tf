@@ -1,7 +1,7 @@
 resource "helm_release" "nginx" {
-  name             = "nginx-ingress"
-  repository       = "https://helm.nginx.com/stable"
-  chart            = "nginx-ingress"
+  name             = "ingress-nginx"
+  repository       = "https://kubernetes.github.io/ingress-nginx"
+  chart            = "ingress-nginx"
   version          = var.nginx_version
   namespace        = "ingress"
   create_namespace = true
@@ -10,6 +10,6 @@ resource "helm_release" "nginx" {
 data "kubernetes_service" "nginx" {
   metadata {
     namespace = helm_release.nginx.namespace
-    name      = "${helm_release.nginx.chart}-${helm_release.nginx.name}"
+    name      = "ingress-nginx-controller"
   }
 }
