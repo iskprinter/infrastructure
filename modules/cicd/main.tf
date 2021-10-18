@@ -1361,32 +1361,38 @@ resource "kubectl_manifest" "task_terraform_plan" {
           name = "terraform-plan"
           env = [
             {
-              name  = "TF_VAR_api_client_id"
-              value = "${var.api_client_id}"
+              name  = "TF_VAR_api_client_credentials_secret_key_id"
+              value = "${var.api_client_credentials_secret_key_id}"
+            },
+            {
+              name  = "TF_VAR_api_client_credentials_secret_key_secret"
+              value = "${var.api_client_credentials_secret_key_secret}"
             },
             {
               name  = "TF_VAR_api_client_credentials_secret_name"
               value = "${var.api_client_credentials_secret_name}"
             },
             {
-              name  = "TF_VAR_api_client_secret_base64"
-              value = "${var.api_client_secret_base64}"
-            },
-            {
               name  = "TF_VAR_mongodb_connection_secret_name"
               value = "${var.mongodb_connection_secret_name}"
             },
             {
-              name  = "TF_VAR_mongodb_connection_url_base64"
-              value = "${base64encode(var.mongodb_connection_url)}"
-            }
+              name  = "TF_VAR_mongodb_connection_secret_key_url"
+              value = "${var.mongodb_connection_secret_key_url}"
+            },
           ]
           image      = "hashicorp/terraform:${var.terraform_version}"
           workingDir = "$(workspaces.default.path)"
           script     = <<-EOF
             #!/bin/sh
             set -eux
-            terraform init -lockfile=readonly
+            cp .terraform.lock.hcl .terraform.lock.hcl.bak
+            terraform init
+            if ! diff -q .terraform.lock.hcl .terraform.lock.hcl.bak; then
+                echo "Update your lockfile with this content:"
+                cat .terraform.lock.hcl
+                exit 1
+            fi
             terraform plan
             EOF
         }
@@ -1415,25 +1421,25 @@ resource "kubectl_manifest" "task_terraform_apply" {
           name = "terraform-apply"
           env = [
             {
-              name  = "TF_VAR_api_client_id"
-              value = "${var.api_client_id}"
+              name  = "TF_VAR_api_client_credentials_secret_key_id"
+              value = "${var.api_client_credentials_secret_key_id}"
+            },
+            {
+              name  = "TF_VAR_api_client_credentials_secret_key_secret"
+              value = "${var.api_client_credentials_secret_key_secret}"
             },
             {
               name  = "TF_VAR_api_client_credentials_secret_name"
               value = "${var.api_client_credentials_secret_name}"
             },
             {
-              name  = "TF_VAR_api_client_secret_base64"
-              value = "${var.api_client_secret_base64}"
-            },
-            {
               name  = "TF_VAR_mongodb_connection_secret_name"
               value = "${var.mongodb_connection_secret_name}"
             },
             {
-              name  = "TF_VAR_mongodb_connection_url_base64"
-              value = "${base64encode(var.mongodb_connection_url)}"
-            }
+              name  = "TF_VAR_mongodb_connection_secret_key_url"
+              value = "${var.mongodb_connection_secret_key_url}"
+            },
           ]
           image      = "hashicorp/terraform:${var.terraform_version}"
           workingDir = "$(workspaces.default.path)"

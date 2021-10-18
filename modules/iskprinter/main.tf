@@ -1,6 +1,24 @@
+locals {
+  api_client_credentials_secret_key_id     = "id"
+  api_client_credentials_secret_key_secret = "secret"
+  api_client_credentials_secret_name       = "api-client-credentials"
+}
+
 resource "kubernetes_namespace" "iskprinter" {
   metadata {
     name = "iskprinter"
+  }
+}
+
+resource "kubernetes_secret" "api_client_credentials" {
+  type = "Opaque"
+  metadata {
+    namespace = "iskprinter"
+    name      = local.api_client_credentials_secret_name
+  }
+  binary_data = {
+    (local.api_client_credentials_secret_key_id)     = base64encode(var.api_client_id)
+    (local.api_client_credentials_secret_key_secret) = var.api_client_secret_base64
   }
 }
 
@@ -10,7 +28,7 @@ resource "google_project_iam_member" "service_account_dns_record_sets_binding" {
   member  = "serviceAccount:${var.google_service_account_cicd_bot_email}"
 }
 
-resource "kubernetes_role" "releaser" {
+resource "kubernetes_role" "releaser_iskprinter" {
   metadata {
     namespace = "iskprinter"
     name      = "releaser"
@@ -40,20 +58,40 @@ resource "kubernetes_role" "releaser" {
     resources  = ["ingresses"]
     verbs      = ["create", "get", "patch", "update", "delete"]
   }
-  rule {
-    api_groups = [""]
-    resources  = ["secrets"]
-    resource_names = [
-      var.api_client_credentials_secret_name,
-      var.mongodb_connection_secret_name,
-    ]
-    verbs = ["get"]
+}
+
+resource "kubernetes_role_binding" "releasers_iskprinter" {
+  metadata {
+    namespace = "iskprinter"
+    name      = "releasers"
+  }
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "Role"
+    name      = "releaser"
+  }
+  subject {
+    kind      = "ServiceAccount"
+    namespace = var.cicd_namespace
+    name      = var.cicd_bot_name
   }
 }
 
-resource "kubernetes_role_binding" "releasers" {
+resource "kubernetes_role" "releaser_ingress" {
   metadata {
-    namespace = "iskprinter"
+    namespace = "ingress"
+    name      = "releaser"
+  }
+  rule {
+    api_groups = [""]
+    resources  = ["services"]
+    verbs      = ["get"]
+  }
+}
+
+resource "kubernetes_role_binding" "releasers_ingress" {
+  metadata {
+    namespace = "ingress"
     name      = "releasers"
   }
   role_ref {

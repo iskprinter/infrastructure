@@ -1,9 +1,13 @@
 locals {
-  admin_username     = "admin"
-  namespace          = "database"
-  neo4j_chart_name   = "neo4j"
-  neo4j_release_name = "neo4j"
-  release            = "mongodb"
+  mongodb_connection_secret_key_url = "url"
+  mongodb_connection_secret_name    = "mongodb-connection"
+  mongodb_resource_name             = "mongodb"
+  mongodb_user_admin_username       = "admin"
+  mongodb_user_api_username         = "api"
+  namespace                         = "database"
+  neo4j_chart_name                  = "neo4j"
+  neo4j_release_name                = "neo4j"
+  release                           = "mongodb"
 }
 
 # Neo4J
@@ -50,7 +54,7 @@ resource "helm_release" "neo4j" {
 
 # MongoDB
 
-resource "random_password" "mongodb" {
+resource "random_password" "mongodb_user_admin_password" {
   length      = 16
   min_lower   = 1
   min_numeric = 1
@@ -66,7 +70,39 @@ resource "helm_release" "mongodb_operator" {
   recreate_pods    = true
   set_sensitive {
     name  = "password"
-    value = random_password.mongodb.result
+    value = random_password.mongodb_user_admin_password.result
+  }
+}
+
+resource "kubernetes_secret" "mongodb_user_admin_credentials" {
+  type = "kubernetes.io/basic-auth"
+  metadata {
+    namespace = "database"
+    name      = "mongodb-user-admin-credentials"
+  }
+  binary_data = {
+    username = base64encode(local.mongodb_user_admin_username)
+    password = base64encode(random_password.mongodb_user_admin_password.result)
+  }
+}
+
+resource "random_password" "mongodb_user_api_password" {
+  length      = 16
+  min_lower   = 1
+  min_numeric = 1
+  min_special = 1
+  min_upper   = 1
+}
+
+resource "kubernetes_secret" "mongodb_user_api_credentials" {
+  type = "kubernetes.io/basic-auth"
+  metadata {
+    namespace = "database"
+    name      = "mongodb-user-api-credentials"
+  }
+  binary_data = {
+    username = base64encode(local.mongodb_user_api_username)
+    password = base64encode(random_password.mongodb_user_api_password.result)
   }
 }
 
@@ -74,105 +110,103 @@ resource "kubectl_manifest" "mongodb" {
   depends_on = [
     helm_release.mongodb_operator
   ]
-  yaml_body = <<-YAML
-    apiVersion: mongodbcommunity.mongodb.com/v1
-    kind: MongoDBCommunity
-    metadata:
-      namespace: ${local.namespace}
-      name: mongodb
-    spec:
-      members: ${var.mongodb_replicas}
-      type: ReplicaSet
-      version: "4.2.6"
-      security:
-        authentication:
-          modes: ["SCRAM"]
-      users:
-        - name: admin
-          db: admin
-          passwordSecretRef: # a reference to the secret that will be used to generate the user's password
-            name: admin-password
-          roles:
-            - name: clusterAdmin
-              db: admin
-            - name: userAdminAnyDatabase
-              db: admin
-          scramCredentialsSecretName: my-scram
-      additionalMongodConfig:
-        storage.wiredTiger.engineConfig.journalCompressor: zlib
-      statefulSet:
-        spec:
-          template:
-            spec:
-              containers:
-                - name: "mongodb-agent"
-                  resources:
-                    requests:
-                      memory: 400M
-                    limits:
-                      memory: 500M
-                - name: "mongod"
-                  resources:
-                    requests:
-                      memory: 400M
-                    limits:
-                      memory: 500M  
-  YAML
+  yaml_body = yamlencode({
+    apiVersion = "mongodbcommunity.mongodb.com/v1"
+    kind       = "MongoDBCommunity"
+    metadata = {
+      namespace = local.namespace
+      name      = local.mongodb_resource_name
+    }
+    spec = {
+      members = var.mongodb_replicas
+      type    = "ReplicaSet"
+      version = "4.2.6"
+      security = {
+        authentication = {
+          modes = ["SCRAM"]
+        }
+      }
+      users = [
+        {
+          name = local.mongodb_user_admin_username
+          db   = "admin"
+          passwordSecretRef = { # a reference to the secret that will be used to generate the user's password
+            name = kubernetes_secret.mongodb_user_admin_credentials.metadata[0].name
+          }
+          roles = [
+            {
+              name = "clusterAdmin"
+              db   = "admin"
+            },
+            {
+              name = "userAdminAnyDatabase"
+              db   = "admin"
+            }
+          ]
+          scramCredentialsSecretName = "my-scram"
+        },
+        {
+          name = local.mongodb_user_api_username
+          db   = "admin"
+          passwordSecretRef = { # a reference to the secret that will be used to generate the user's password
+            name = kubernetes_secret.mongodb_user_api_credentials.metadata[0].name
+          }
+          roles = [
+            {
+              name = "readWrite"
+              db   = "isk-printer"
+            }
+          ]
+          scramCredentialsSecretName = "my-scram"
+        }
+      ]
+      additionalMongodConfig = {
+        "storage.wiredTiger.engineConfig.journalCompressor" = "zlib"
+      }
+      statefulSet = {
+        spec = {
+          template = {
+            spec = {
+              containers = [
+                {
+                  name = "mongodb-agent"
+                  resources = {
+                    requests = {
+                      memory = "400M"
+                    }
+                    limits = {
+                      memory = "500M"
+                    }
+                  }
+                },
+                {
+                  name = "mongod"
+                  resources = {
+                    requests = {
+                      memory = "400M"
+                    }
+                    limits = {
+                      memory = "500M"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  })
 }
 
-resource "kubernetes_secret" "mongodb_password" {
-  # the user credentials will be generated from this secret
-  # once the credentials are generated, this secret is no longer required
-  type = "kubernetes.io/basic-auth"
+resource "kubernetes_secret" "mongodb_connection" {
+  type = "Opaque"
   metadata {
-    namespace = "database"
-    name      = "admin-password"
+    namespace = "iskprinter"
+    name      = local.mongodb_connection_secret_name
   }
   binary_data = {
-    username = base64encode(local.admin_username)
-    password = base64encode(random_password.mongodb.result)
-  }
-}
-
-resource "kubernetes_secret" "iskprinter_mongodb" {
-  type = "kubernetes.io/basic-auth"
-  metadata {
-    namespace = "database"
-    name      = "iskprinter-credentials"
-  }
-  binary_data = {
-    username = base64encode(local.admin_username)
-    password = base64encode(random_password.mongodb.result)
-  }
-}
-
-resource "kubernetes_role" "mongodb_secret_reader" {
-  metadata {
-    namespace = "database"
-    name      = "mongodb-secret-reader"
-  }
-  rule {
-    api_groups     = [""]
-    resources      = ["secrets"]
-    resource_names = [kubernetes_secret.iskprinter_mongodb.metadata[0].name]
-    verbs          = ["get"]
-  }
-}
-
-resource "kubernetes_role_binding" "mongodb_secret_readers" {
-  metadata {
-    namespace = "database"
-    name      = "mongodb-secret-readers"
-  }
-  role_ref {
-    api_group = "rbac.authorization.k8s.io"
-    kind      = "Role"
-    name      = "mongodb-secret-reader"
-  }
-  subject {
-    kind      = "ServiceAccount"
-    namespace = var.cicd_namespace
-    name      = var.cicd_bot_name
+    (local.mongodb_connection_secret_key_url) = base64encode("mongodb+srv://${urlencode(local.mongodb_user_api_username)}:${urlencode(random_password.mongodb_user_api_password.result)}@${local.release}-svc.${local.namespace}.svc.cluster.local/?ssl=false")
   }
 }
 

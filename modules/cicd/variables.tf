@@ -2,17 +2,16 @@ variable "alpine_k8s_version" {
   type = string
 }
 
-variable "api_client_id" {
+variable "api_client_credentials_secret_key_id" {
   type = string
+}
+
+variable "api_client_credentials_secret_key_secret" {
+  type      = string
 }
 
 variable "api_client_credentials_secret_name" {
   type = string
-}
-
-variable "api_client_secret_base64" {
-  type      = string
-  sensitive = true
 }
 
 variable "cicd_bot_github_username" {
@@ -53,7 +52,7 @@ variable "mongodb_connection_secret_name" {
   type = string
 }
 
-variable "mongodb_connection_url" {
+variable "mongodb_connection_secret_key_url" {
   type = string
 }
 
