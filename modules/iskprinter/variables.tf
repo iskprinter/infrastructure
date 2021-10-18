@@ -1,5 +1,10 @@
-variable "api_client_credentials_secret_name" {
+variable "api_client_id" {
   type = string
+}
+
+variable "api_client_secret_base64" {
+  type      = string
+  sensitive = true
 }
 
 variable "cicd_bot_name" {
@@ -11,10 +16,6 @@ variable "cicd_namespace" {
 }
 
 variable "google_service_account_cicd_bot_email" {
-  type = string
-}
-
-variable "mongodb_connection_secret_name" {
   type = string
 }
 

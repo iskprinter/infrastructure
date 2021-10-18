@@ -11,34 +11,34 @@ variable "region" {
   default = "us-west1"
 }
 
-variable "min_node_2gb_count" {
-  type    = number
-  default = 0
-}
+# variable "min_node_2gb_count" {
+#   type    = number
+#   default = 0
+# }
 
-variable "max_node_2gb_count" {
-  type    = number
-  default = 2
-}
+# variable "max_node_2gb_count" {
+#   type    = number
+#   default = 2
+# }
 
-variable "min_node_4gb_count" {
-  type    = number
-  default = 0
-}
+# variable "min_node_4gb_count" {
+#   type    = number
+#   default = 0
+# }
 
-variable "max_node_4gb_count" {
-  type    = number
-  default = 2
-}
+# variable "max_node_4gb_count" {
+#   type    = number
+#   default = 2
+# }
 
 variable "min_node_8gb_count" {
   type    = number
-  default = 0
+  default = 1
 }
 
 variable "max_node_8gb_count" {
   type    = number
-  default = 2
+  default = 3
 }
 
 # Ingress
@@ -150,9 +150,4 @@ variable "cert_manager_version" {
 variable "api_client_credentials_secret_name" {
   type    = string
   default = "api-client-credentials"
-}
-
-variable "mongodb_connection_secret_name" {
-  type    = string
-  default = "mongodb-connection"
 }
