@@ -70,16 +70,20 @@ module "database" {
   source                       = "./modules/database/"
   cicd_bot_name                = var.cicd_bot_name
   cicd_namespace               = module.cicd.cicd_namespace
+  mongodb_replicas             = var.mongodb_replicas
   neo4j_persistent_volume_size = var.neo4j_persistent_volume_size
+  neo4j_replicas               = var.neo4j_replicas
   neo4j_version                = var.neo4j_version
   project                      = var.project
   region                       = var.region
 }
 
 module "iskprinter" {
-  source                             = "./modules/iskprinter"
-  api_client_credentials_secret_name = var.api_client_credentials_secret_name
-  cicd_bot_name                      = var.cicd_bot_name
-  cicd_namespace                     = module.cicd.cicd_namespace
-  mongodb_connection_secret_name     = var.mongodb_connection_secret_name
+  source                                = "./modules/iskprinter"
+  api_client_credentials_secret_name    = var.api_client_credentials_secret_name
+  cicd_bot_name                         = var.cicd_bot_name
+  cicd_namespace                        = module.cicd.cicd_namespace
+  google_service_account_cicd_bot_email = module.cicd.google_service_account_cicd_bot_email
+  mongodb_connection_secret_name        = var.mongodb_connection_secret_name
+  project                               = var.project
 }

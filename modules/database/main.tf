@@ -27,6 +27,10 @@ resource "helm_release" "neo4j" {
     value = "yes"
   }
   set {
+    name  = "core.numberOfServers"
+    value = var.neo4j_replicas
+  }
+  set {
     name  = "core.persistentVolume.size"
     value = var.neo4j_persistent_volume_size
   }
@@ -77,7 +81,7 @@ resource "kubectl_manifest" "mongodb" {
       namespace: ${local.namespace}
       name: mongodb
     spec:
-      members: 3
+      members: ${var.mongodb_replicas}
       type: ReplicaSet
       version: "4.2.6"
       security:
@@ -192,6 +196,7 @@ resource "google_compute_resource_policy" "backup_policy" {
   }
 }
 
+# The replicas are identical, so we only need to back up one
 data "kubernetes_persistent_volume_claim" "neo4j" {
   metadata {
     namespace = local.namespace
@@ -199,24 +204,40 @@ data "kubernetes_persistent_volume_claim" "neo4j" {
   }
 }
 
-# This resource has to be created manually
-# because there is no way to access the ID
-# of the PV that fulfills the PVC.
+# data "kubernetes_persistent_volume" "neo4j" {
+#   metadata {
+#     namespace = local.namespace
+#     name      = "pvc-${data.kubernetes_persistent_volume_claim.metadata[0].uid}"
+#   }
+# }
+
+# This resource has to be created manually because there is no data.kubernetes_persistent_volume
+# resource in Terraform, which is required to associate the PersistentVolume with the GCP volume.
 # Refer to https://github.com/hashicorp/terraform-provider-kubernetes/issues/1232
 # for the open feature request.
+
 # resource "google_compute_disk_resource_policy_attachment" "neo4j_backup_policy_attachment" {
 #   project = var.project
 #   zone    = "${var.region}-a"
 #   name    = google_compute_resource_policy.backup_policy.name
-#   disk    = "pvc-${data.kubernetes_persistent_volume_claim.neo4j.metadata.uid}"
+#   disk    = "pvc-${data.kubernetes_persistent_volume.neo4j.spec.gcePersistentDisk.pdName}"
 # }
 
+# The replicas are identical, so we only need to back up one
 data "kubernetes_persistent_volume_claim" "mongodb" {
+  count = var.mongodb_replicas
   metadata {
     namespace = local.namespace
     name      = "datadir-${local.neo4j_chart_name}-${local.neo4j_release_name}-core-0"
   }
 }
+
+# data "kubernetes_persistent_volume" "mongodb" {
+#   metadata {
+#     namespace = local.namespace
+#     name      = "pvc-${data.kubernetes_persistent_volume_claim.metadata[0].name.uid}"
+#   }
+# }
 
 # This resource has to be created manually
 # because there is no way to access the ID
@@ -224,8 +245,9 @@ data "kubernetes_persistent_volume_claim" "mongodb" {
 # Refer to https://github.com/hashicorp/terraform-provider-kubernetes/issues/1232
 # for the open feature request.
 # resource "google_compute_disk_resource_policy_attachment" "mongodb_backup_policy_attachment" {
+
 #   project = var.project
 #   zone    = "${var.region}-a"
 #   name    = google_compute_resource_policy.backup_policy.name
-#   disk    = "pvc-${data.kubernetes_persistent_volume_claim.mongodb.metadata.uid}"
+#   disk    = "pvc-${data.kubernetes_persistent_volume.mongodb.spec.gcePersistentDisk.pdName}"
 # }

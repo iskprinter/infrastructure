@@ -33,6 +33,40 @@ Deploys a Kubernetes cluster and supporting resources
     terraform apply
     ```
 
+1. Since the `data` source for `PersistentVolume`s is not yet supported in Terraform, manually set the backup policy for each of the database volumes.
+    ```
+    # Get the PV names
+    mongodb_pv=$(
+        kubectl -n database get pvc data-volume-mongodb-0 -o json \
+       | jq -r '.spec.volumeName'
+    )
+    neo4j_pv=$(
+        kubectl -n database get pvc datadir-neo4j-neo4j-core-0 -o json \
+        | jq -r '.spec.volumeName'
+    )
+
+    # Get the GCE Persistent Disk names
+    mongodb_pd_name=$(
+        kubectl -n database get pv "$mongodb_pv" -o json \
+        | jq -r '.spec.gcePersistentDisk.pdName'
+    )
+    neo4j_pd_name=$(
+        kubectl -n database get pv "$neo4j_pv" -o json \
+        | jq -r '.spec.gcePersistentDisk.pdName'
+    )
+
+    # Attach the backup policy
+    gcloud compute disks add-resource-policies "$mongodb_pd_name" \
+        --project cameronhudson8 \
+        --zone us-west1-a \
+        --resource-policies 'backup'
+    gcloud compute disks add-resource-policies "$neo4j_pd_name" \
+        --project cameronhudson8 \
+        --zone us-west1-a \
+        --resource-policies 'backup'
+    ```
+
+
 # How to make the application live
 
 1. List the nameservers of the managed zone
