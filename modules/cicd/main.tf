@@ -1,3 +1,7 @@
+locals {
+  cicd_bot_personal_access_token_key = "password"
+}
+
 # Image Registry
 
 resource "google_artifact_registry_repository" "iskprinter" {
@@ -20,8 +24,8 @@ data "kubectl_file_documents" "tekton_pipeline" {
 }
 
 resource "kubectl_manifest" "tekton_pipeline" {
-  count            = length(data.kubectl_file_documents.tekton_pipeline.documents)
-  yaml_body        = element(data.kubectl_file_documents.tekton_pipeline.documents, count.index)
+  for_each         = data.kubectl_file_documents.tekton_pipeline.manifests
+  yaml_body        = each.value
   wait_for_rollout = false
 }
 
@@ -37,8 +41,8 @@ data "kubectl_file_documents" "tekton_dashboard" {
 }
 
 resource "kubectl_manifest" "tekton_dashboard" {
-  count            = length(data.kubectl_file_documents.tekton_dashboard.documents)
-  yaml_body        = element(data.kubectl_file_documents.tekton_dashboard.documents, count.index)
+  for_each         = data.kubectl_file_documents.tekton_dashboard.manifests
+  yaml_body        = each.value
   wait_for_rollout = false
 }
 
@@ -55,8 +59,8 @@ data "kubectl_file_documents" "tekton_triggers" {
 }
 
 resource "kubectl_manifest" "tekton_triggers" {
-  count            = length(data.kubectl_file_documents.tekton_triggers.documents)
-  yaml_body        = element(data.kubectl_file_documents.tekton_triggers.documents, count.index)
+  for_each         = data.kubectl_file_documents.tekton_triggers.manifests
+  yaml_body        = each.value
   wait_for_rollout = false
 }
 
@@ -70,8 +74,8 @@ data "kubectl_file_documents" "tekton_triggers_interceptors" {
 }
 
 resource "kubectl_manifest" "tekton_triggers_interceptors" {
-  count            = length(data.kubectl_file_documents.tekton_triggers_interceptors.documents)
-  yaml_body        = element(data.kubectl_file_documents.tekton_triggers_interceptors.documents, count.index)
+  for_each         = data.kubectl_file_documents.tekton_triggers_interceptors.manifests
+  yaml_body        = each.value
   wait_for_rollout = false
 }
 
@@ -135,8 +139,8 @@ resource "kubernetes_secret" "cicd_bot_personal_access_token" {
     name      = "cicd-bot-personal-access-token"
   }
   binary_data = {
-    username = base64encode(var.cicd_bot_github_username)
-    password = var.cicd_bot_personal_access_token_base64
+    username                                   = base64encode(var.cicd_bot_github_username)
+    (local.cicd_bot_personal_access_token_key) = var.cicd_bot_personal_access_token_base64
   }
 }
 
@@ -401,18 +405,18 @@ resource "kubectl_manifest" "trigger_github_image_pr" {
           }
           params = [
             {
-              name = "secretRef"
-              value = {
-                secretName = "github-webhook"
-                secretKey  = "secretToken"
-              }
-            },
-            {
               name = "eventTypes"
               value = [
                 "pull_request"
               ]
             },
+            {
+              name = "secretRef"
+              value = {
+                secretName = "github-webhook"
+                secretKey  = "secretToken"
+              }
+            }
           ]
         },
         {
@@ -463,18 +467,18 @@ resource "kubectl_manifest" "trigger_github_release_pr" {
           }
           params = [
             {
-              name = "secretRef"
-              value = {
-                secretName = "github-webhook"
-                secretKey  = "secretToken"
-              }
-            },
-            {
               name = "eventTypes"
               value = [
                 "pull_request"
               ]
             },
+            {
+              name = "secretRef"
+              value = {
+                secretName = "github-webhook"
+                secretKey  = "secretToken"
+              }
+            }
           ]
         },
         {
@@ -525,18 +529,18 @@ resource "kubectl_manifest" "trigger_github_release_push" {
           }
           params = [
             {
-              name = "secretRef"
-              value = {
-                secretName = "github-webhook"
-                secretKey  = "secretToken"
-              }
-            },
-            {
               name = "eventTypes"
               value = [
                 "push"
               ]
             },
+            {
+              name = "secretRef"
+              value = {
+                secretName = "github-webhook"
+                secretKey  = "secretToken"
+              }
+            }
           ]
         },
         {
@@ -584,20 +588,20 @@ resource "kubectl_manifest" "trigger_binding_github_pr" {
     spec = {
       params = [
         {
+          name  = "github-status-url"
+          value = "$(body.pull_request.statuses_url)"
+        },
+        {
+          name  = "pr-number"
+          value = "$(body.number)"
+        },
+        {
           name  = "repo-name"
           value = "$(body.repository.name)"
         },
         {
-          name  = "revision"
-          value = "$(body.pull_request.head.sha)"
-        },
-        {
           name  = "repo-url"
           value = "$(body.repository.ssh_url)"
-        },
-        {
-          name  = "github-status-url"
-          value = "$(body.pull_request.statuses_url)"
         }
       ]
     }
@@ -623,12 +627,12 @@ resource "kubectl_manifest" "trigger_binding_github_push" {
           value = "$(body.repository.name)"
         },
         {
-          name  = "revision"
-          value = "$(body.head_commit.id)"
-        },
-        {
           name  = "repo-url"
           value = "$(body.repository.ssh_url)"
+        },
+        {
+          name  = "revision"
+          value = "$(body.head_commit.id)"
         }
       ]
     }
@@ -652,16 +656,16 @@ resource "kubectl_manifest" "trigger_template_github_image_pr" {
     spec = {
       params = [
         {
+          name = "github-status-url"
+        },
+        {
+          name = "pr-number"
+        },
+        {
           name = "repo-name"
         },
         {
           name = "repo-url"
-        },
-        {
-          name = "revision"
-        },
-        {
-          name = "github-status-url"
         }
       ]
       resourcetemplates = [
@@ -678,20 +682,20 @@ resource "kubectl_manifest" "trigger_template_github_image_pr" {
             }
             params = [
               {
-                name  = "image-name"
+                name  = "github-status-url"
+                value = "$(tt.params.github-status-url)"
+              },
+              {
+                name  = "pr-number"
+                value = "$(tt.params.pr-number)"
+              },
+              {
+                name  = "repo-name"
                 value = "$(tt.params.repo-name)"
               },
               {
                 name  = "repo-url"
                 value = "$(tt.params.repo-url)"
-              },
-              {
-                name  = "revision"
-                value = "$(tt.params.revision)"
-              },
-              {
-                name  = "github-status-url"
-                value = "$(tt.params.github-status-url)"
               }
             ]
             workspaces = [
@@ -733,16 +737,16 @@ resource "kubectl_manifest" "trigger_template_github_release_pr" {
     spec = {
       params = [
         {
+          name = "github-status-url"
+        },
+        {
+          name = "pr-number"
+        },
+        {
           name = "repo-name"
         },
         {
           name = "repo-url"
-        },
-        {
-          name = "revision"
-        },
-        {
-          name = "github-status-url"
         }
       ]
       resourcetemplates = [
@@ -759,16 +763,20 @@ resource "kubectl_manifest" "trigger_template_github_release_pr" {
             }
             params = [
               {
-                name  = "repo-url"
-                value = "$(tt.params.repo-url)"
-              },
-              {
-                name  = "revision"
-                value = "$(tt.params.revision)"
-              },
-              {
                 name  = "github-status-url"
                 value = "$(tt.params.github-status-url)"
+              },
+              {
+                name  = "pr-number"
+                value = "$(tt.params.pr-number)"
+              },
+              {
+                name  = "repo-name"
+                value = "$(tt.params.repo-name)"
+              },
+              {
+                name  = "repo-url"
+                value = "$(tt.params.repo-url)"
               }
             ]
             workspaces = [
@@ -879,7 +887,17 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
     spec = {
       params = [
         {
-          name        = "image-name"
+          name        = "github-status-url"
+          type        = "string"
+          description = "The GitHub status URL"
+        },
+        {
+          name        = "pr-number"
+          type        = "string"
+          description = "The number of the PR to build"
+        },
+        {
+          name        = "repo-name"
           type        = "string"
           description = "The name of the repo to build"
         },
@@ -887,16 +905,6 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
           name        = "repo-url"
           type        = "string"
           description = "The URL of the repo to build"
-        },
-        {
-          name        = "revision"
-          type        = "string"
-          description = "The revision to of the repo to build"
-        },
-        {
-          name        = "github-status-url"
-          type        = "string"
-          description = "The GitHub status URL"
         }
       ]
       workspaces = [
@@ -906,32 +914,87 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
       ]
       tasks = [
         {
+          name = "get-secret-github-token"
+          taskRef = {
+            name = "get-secret"
+          }
+          params = [
+            {
+              name  = "secret-key"
+              value = local.cicd_bot_personal_access_token_key
+            },
+            {
+              name  = "secret-name"
+              value = kubernetes_secret.cicd_bot_personal_access_token.metadata[0].name
+            },
+            {
+              name  = "secret-namespace"
+              value = kubernetes_secret.cicd_bot_personal_access_token.metadata[0].namespace
+            }
+          ]
+        },
+        {
+          runAfter = [
+            "get-secret-github-token"
+          ]
           name = "report-initial-status"
+          taskRef = {
+            name = "report-status"
+          }
           params = [
             {
               name  = "github-status-url"
               value = "$(params.github-status-url)"
             },
             {
+              name  = "github-token"
+              value = "$(tasks.get-secret-github-token.results.secret-value)"
+            },
+            {
+              name  = "github-username"
+              value = var.cicd_bot_github_username
+            },
+            {
               name  = "tekton-pipeline-status"
               value = "None"
             }
           ]
-          taskRef = {
-            name = "report-status"
-          }
         },
         {
-          name = "github-checkout"
+          runAfter = [
+            "get-secret-github-token"
+          ]
+          name = "github-get-pr-sha"
           taskRef = {
-            name = "github-checkout"
+            name = "github-get-pr-sha"
           }
-          workspaces = [
+          params = [
             {
-              name      = "default" # Must match what the git-clone task expects.
-              workspace = "default" # Must match above
+              name  = "github-token"
+              value = "$(tasks.get-secret-github-token.results.secret-value)"
+            },
+            {
+              name  = "github-username"
+              value = var.cicd_bot_github_username
+            },
+            {
+              name  = "pr-number"
+              value = "$(params.pr-number)"
+            },
+            {
+              name  = "repo-name"
+              value = "$(params.repo-name)"
             }
           ]
+        },
+        {
+          runAfter = [
+            "github-get-pr-sha",
+          ]
+          name = "github-checkout-commit"
+          taskRef = {
+            name = "github-checkout-commit"
+          }
           params = [
             {
               name  = "repo-url"
@@ -939,24 +1002,7 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
             },
             {
               name  = "revision"
-              value = "$(params.revision)"
-            }
-          ]
-        },
-        {
-          runAfter = [
-            "report-initial-status",
-            "github-checkout"
-          ]
-          name = "build-and-push-image"
-          params = [
-            {
-              name  = "image-name"
-              value = "$(params.image-name)"
-            },
-            {
-              name  = "image-tag"
-              value = "$(params.revision)"
+              value = "$(tasks.github-get-pr-sha.results.revision)"
             }
           ]
           workspaces = [
@@ -965,9 +1011,32 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
               workspace = "default" # Must match above
             }
           ]
+        },
+        {
+          runAfter = [
+            "report-initial-status",
+            "github-checkout-commit"
+          ]
+          name = "build-and-push-image"
           taskRef = {
             name = "build-and-push-image"
           }
+          params = [
+            {
+              name  = "image-name"
+              value = "$(params.repo-name)"
+            },
+            {
+              name  = "image-tag"
+              value = "$(tasks.github-get-pr-sha.results.revision)"
+            }
+          ]
+          workspaces = [
+            {
+              name      = "default"
+              workspace = "default" # Must match above
+            }
+          ]
         }
       ]
       finally = [
@@ -977,6 +1046,14 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
             {
               name  = "github-status-url"
               value = "$(params.github-status-url)"
+            },
+            {
+              name  = "github-token"
+              value = "$(tasks.get-secret-github-token.results.secret-value)"
+            },
+            {
+              name  = "github-username"
+              value = var.cicd_bot_github_username
             },
             {
               name  = "tekton-pipeline-status"
@@ -1007,19 +1084,24 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
     spec = {
       params = [
         {
-          name        = "repo-url"
-          type        = "string"
-          description = "The URL of the repo to build"
-        },
-        {
-          name        = "revision"
-          type        = "string"
-          description = "The revision to of the repo to build"
-        },
-        {
           name        = "github-status-url"
           type        = "string"
           description = "The GitHub status URL"
+        },
+        {
+          name        = "pr-number"
+          type        = "string"
+          description = "The number to of the PR to build"
+        },
+        {
+          name        = "repo-name"
+          type        = "string"
+          description = "The name of the repo to build"
+        },
+        {
+          name        = "repo-url"
+          type        = "string"
+          description = "The URL of the repo to build"
         }
       ]
       workspaces = [
@@ -1029,25 +1111,83 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
       ]
       tasks = [
         {
+          name = "get-secret-github-token"
+          taskRef = {
+            name = "get-secret"
+          }
+          params = [
+            {
+              name  = "secret-key"
+              value = local.cicd_bot_personal_access_token_key
+            },
+            {
+              name  = "secret-name"
+              value = kubernetes_secret.cicd_bot_personal_access_token.metadata[0].name
+            },
+            {
+              name  = "secret-namespace"
+              value = kubernetes_secret.cicd_bot_personal_access_token.metadata[0].namespace
+            }
+          ]
+        },
+        {
           name = "report-initial-status"
+          taskRef = {
+            name = "report-status"
+          }
           params = [
             {
               name  = "github-status-url"
               value = "$(params.github-status-url)"
             },
             {
+              name  = "github-token"
+              value = "$(tasks.get-secret-github-token.results.secret-value)"
+            },
+            {
+              name  = "github-username"
+              value = var.cicd_bot_github_username
+            },
+            {
               name  = "tekton-pipeline-status"
               value = "None"
             }
           ]
-          taskRef = {
-            name = "report-status"
-          }
         },
         {
-          name = "github-checkout"
+          runAfter = [
+            "get-secret-github-token"
+          ]
+          name = "github-get-pr-sha"
           taskRef = {
-            name = "github-checkout"
+            name = "github-get-pr-sha"
+          }
+          params = [
+            {
+              name  = "github-token"
+              value = "$(tasks.get-secret-github-token.results.secret-value)"
+            },
+            {
+              name  = "github-username"
+              value = var.cicd_bot_github_username
+            },
+            {
+              name  = "pr-number"
+              value = "$(params.pr-number)"
+            },
+            {
+              name  = "repo-name"
+              value = "$(params.repo-name)"
+            }
+          ]
+        },
+        {
+          runAfter = [
+            "github-get-pr-sha",
+          ]
+          name = "github-checkout-commit"
+          taskRef = {
+            name = "github-checkout-commit"
           }
           params = [
             {
@@ -1056,7 +1196,7 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
             },
             {
               name  = "revision"
-              value = "$(params.revision)"
+              value = "$(tasks.github-get-pr-sha.results.revision)"
             }
           ]
           workspaces = [
@@ -1069,7 +1209,7 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
         {
           runAfter = [
             "report-initial-status",
-            "github-checkout"
+            "github-checkout-commit"
           ]
           name = "terraform-plan"
           workspaces = [
@@ -1090,6 +1230,14 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
             {
               name  = "github-status-url"
               value = "$(params.github-status-url)"
+            },
+            {
+              name  = "github-token"
+              value = "$(tasks.get-secret-github-token.results.secret-value)"
+            },
+            {
+              name  = "github-username"
+              value = var.cicd_bot_github_username
             },
             {
               name  = "tekton-pipeline-status"
@@ -1137,9 +1285,9 @@ resource "kubectl_manifest" "pipeline_github_release_push" {
       ]
       tasks = [
         {
-          name = "github-checkout"
+          name = "github-checkout-commit"
           taskRef = {
-            name = "github-checkout"
+            name = "github-checkout-commit"
           }
           params = [
             {
@@ -1160,7 +1308,7 @@ resource "kubectl_manifest" "pipeline_github_release_push" {
         },
         {
           runAfter = [
-            "github-checkout"
+            "github-checkout-commit"
           ]
           name = "terraform-apply"
           workspaces = [
@@ -1191,41 +1339,45 @@ resource "kubectl_manifest" "task_report_status" {
     spec = {
       params = [
         {
-          description = "The GitHub status URL"
           name        = "github-status-url"
+          description = "The GitHub status URL"
         },
         {
-          description = "The Tekton pipeline status"
+          name        = "github-token"
+          description = "The GitHub personal access token of the CICD bot"
+        },
+        {
+          name        = "github-username"
+          description = "The GitHub username of the CICD bot"
+        },
+        {
           name        = "tekton-pipeline-status"
+          description = "The Tekton pipeline status"
         }
       ]
       steps = [
         {
-          image = "alpine/k8s:${var.alpine_k8s_version}"
+          image = "alpine:3.14"
           name  = "report-status"
           env = [
-            {
-              name  = "TEKTON_PIPELINE_STATUS"
-              value = "$(params.tekton-pipeline-status)"
-            },
             {
               name  = "GITHUB_STATUS_URL"
               value = "$(params.github-status-url)"
             },
             {
+              name  = "GITHUB_TOKEN"
+              value = "$(params.github-token)"
+            },
+            {
               name  = "GITHUB_USERNAME"
-              value = var.cicd_bot_github_username
+              value = "$(params.github-username)"
             },
             {
-              name  = "GITHUB_TOKEN_SECRET_NAMESPACE"
-              value = kubernetes_secret.cicd_bot_personal_access_token.metadata[0].namespace
-            },
-            {
-              name  = "GITHUB_TOKEN_SECRET_NAME"
-              value = kubernetes_secret.cicd_bot_personal_access_token.metadata[0].name
+              name  = "TEKTON_PIPELINE_STATUS"
+              value = "$(params.tekton-pipeline-status)"
             }
           ]
-          command = ["/bin/bash"]
+          command = ["/bin/sh"]
           args = [
             "-c",
             file("${path.module}/report_status.sh")
@@ -1236,13 +1388,174 @@ resource "kubectl_manifest" "task_report_status" {
   })
 }
 
-resource "kubectl_manifest" "task_github_checkout" {
+resource "kubectl_manifest" "task_get_secret" {
+  yaml_body = yamlencode({
+    apiVersion = "tekton.dev/v1beta1"
+    kind       = "Task"
+    metadata = {
+      name      = "get-secret"
+      namespace = "tekton-pipelines"
+    }
+    spec = {
+      params = [
+        {
+          name        = "secret-key"
+          description = "The key of the secret to fetch"
+        },
+        {
+          name        = "secret-name"
+          description = "The name of the secret to fetch"
+        },
+        {
+          name        = "secret-namespace"
+          description = "The namespace of the secret to fetch"
+        }
+      ]
+      results = [
+        {
+          name        = "secret-value"
+          description = "The value of the secret"
+        }
+      ]
+      steps = [
+        {
+          image = "alpine/k8s:${var.alpine_k8s_version}"
+          name  = "get-secret"
+          env = [
+            {
+              name  = "SECRET_KEY"
+              value = "$(params.secret-key)"
+            },
+            {
+              name  = "SECRET_NAME"
+              value = "$(params.secret-name)"
+            },
+            {
+              name  = "SECRET_NAMESPACE"
+              value = "$(params.secret-namespace)"
+            }
+          ]
+          script = <<-EOF
+            #!/bin/sh
+            set -eux
+            secret_value=$(
+                kubectl get secret "$SECRET_NAME" \
+                    -n "$SECRET_NAMESPACE" \
+                    -o jsonpath="{.data.$${SECRET_KEY}}" \
+                | base64 -d
+            )
+            echo -n "$secret_value" | tee $(results.secret-value.path)
+            EOF
+        }
+      ]
+    }
+  })
+}
+
+resource "kubectl_manifest" "task_github_get_pr_sha" {
   yaml_body = yamlencode({
     apiVersion = "tekton.dev/v1beta1"
     kind       = "Task"
     metadata = {
       "namespace" = "tekton-pipelines"
-      "name"      = "github-checkout"
+      "name"      = "github-get-pr-sha"
+    }
+    spec = {
+      params = [
+        {
+          name        = "github-token"
+          description = "The GitHub personal access token of the CICD bot"
+        },
+        {
+          name        = "github-username"
+          description = "The GitHub username of the CICD bot"
+        },
+        {
+          name        = "pr-number"
+          description = "PR number to check out."
+          type        = "string"
+        },
+        {
+          name        = "repo-name"
+          description = "The name of the repository for which to find the PR SHA."
+          type        = "string"
+        }
+      ]
+      results = [
+        {
+          name        = "revision"
+          description = "The git commit hash"
+        }
+      ]
+      steps = [
+        {
+          name  = "github-get-pr-sha"
+          image = "alpine:3.14"
+          env = [
+            {
+              name  = "GITHUB_USERNAME"
+              value = "$(params.github-username)"
+            },
+            {
+              name  = "GITHUB_TOKEN"
+              value = "$(params.github-token)"
+            },
+            {
+              name  = "PR_NUMBER"
+              value = "$(params.pr-number)"
+            },
+            {
+              name  = "REPO_NAME"
+              value = "$(params.repo-name)"
+            }
+          ]
+          script = <<-EOF
+            #!/bin/sh
+            set -eux
+            TIMEOUT_SECONDS=30
+            apk update
+            apk add --no-cache \
+                curl \
+                jq
+            pr_response=''
+            mergeable=''
+            i=0
+            while [ $i -lt $TIMEOUT_SECONDS ]; do
+                echo '---'
+                echo "$i"
+                pr_response=$(
+                    curl \
+                        -X GET \
+                        -u "$${GITHUB_USERNAME}:$${GITHUB_TOKEN}" \
+                        -H 'Accept: application/vnd.github.v3+json' \
+                        "https://api.github.com/repos/iskprinter/$${REPO_NAME}/pulls/$${PR_NUMBER}"
+                )
+                mergeable=$(echo "$pr_response" | jq -r '.mergeable')
+                if [ "$mergeable" = 'true' ]; then
+                    break;
+                fi
+                sleep 1
+                i=$(expr $i + 1)
+            done
+            if [ $i -gte 30 ]; then
+                echo "Unable to get merge commit from GitHub within $${TIMEOUT_SECONDS}. 'mergeable' status was $${mergeable}." >2
+            fi
+            merge_commit_sha=$(echo "$pr_response" | jq -r '.merge_commit_sha')
+            echo -n "$merge_commit_sha" | tee $(results.revision.path)
+            EOF
+        }
+      ]
+    }
+  })
+}
+
+resource "kubectl_manifest" "task_github_checkout_commit" {
+  yaml_body = yamlencode({
+    apiVersion = "tekton.dev/v1beta1"
+    kind       = "Task"
+    metadata = {
+      "namespace" = "tekton-pipelines"
+      "name"      = "github-checkout-commit"
     }
     spec = {
       params = [

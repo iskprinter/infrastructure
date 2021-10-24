@@ -77,8 +77,6 @@ variable "neo4j_version" {
   default = "4.3.4" # The Neo4j version.
 }
 
-
-
 # CI/CD
 
 variable "alpine_k8s_version" {
@@ -127,17 +125,17 @@ variable "kaniko_version" {
 
 variable "tekton_pipeline_version" {
   type    = string
-  default = "0.28.1"
+  default = "0.29.0"
 }
 
 variable "tekton_triggers_version" {
   type    = string
-  default = "0.15.2"
+  default = "0.17.0"
 }
 
 variable "tekton_dashboard_version" {
   type    = string
-  default = "0.20.0"
+  default = "0.21.0"
 }
 
 variable "terraform_version" {
