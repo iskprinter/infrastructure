@@ -77,8 +77,6 @@ variable "neo4j_version" {
   default = "4.3.4" # The Neo4j version.
 }
 
-
-
 # CI/CD
 
 variable "alpine_k8s_version" {

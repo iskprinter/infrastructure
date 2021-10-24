@@ -1,6 +1,10 @@
-#!/bin/bash
+#!/bin/sh
 
 set -eux
+
+apk update
+apk add --no-cache \
+    curl
 
 # Map Tekton statuses to GitHub statuses
 function tekton_status_to_github_status {
@@ -27,15 +31,10 @@ function tekton_status_to_github_status {
 github_status=$(tekton_status_to_github_status "$TEKTON_PIPELINE_STATUS")
 
 set +x
-token=$(
-    kubectl get secret "$GITHUB_TOKEN_SECRET_NAME" \
-        -n "$GITHUB_TOKEN_SECRET_NAMESPACE" \
-        -o jsonpath='{.data.password}' \
-    | base64 -d
-)
 curl \
     -X POST \
-    -u "${GITHUB_USERNAME}:${token}" \
+    -u "${GITHUB_USERNAME}:${GITHUB_TOKEN}" \
     "$GITHUB_STATUS_URL" \
+    -H 'Accept: application/vnd.github.v3+json' \
     -d "{\"context\":\"tekton\",\"state\":\"${github_status}\"}"
 set -x
