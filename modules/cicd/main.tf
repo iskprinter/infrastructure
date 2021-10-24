@@ -20,8 +20,8 @@ data "kubectl_file_documents" "tekton_pipeline" {
 }
 
 resource "kubectl_manifest" "tekton_pipeline" {
-  count            = length(data.kubectl_file_documents.tekton_pipeline.documents)
-  yaml_body        = element(data.kubectl_file_documents.tekton_pipeline.documents, count.index)
+  for_each         = data.kubectl_file_documents.tekton_pipeline.manifests
+  yaml_body        = each.value
   wait_for_rollout = false
 }
 
@@ -37,8 +37,8 @@ data "kubectl_file_documents" "tekton_dashboard" {
 }
 
 resource "kubectl_manifest" "tekton_dashboard" {
-  count            = length(data.kubectl_file_documents.tekton_dashboard.documents)
-  yaml_body        = element(data.kubectl_file_documents.tekton_dashboard.documents, count.index)
+  for_each         = data.kubectl_file_documents.tekton_dashboard.manifests
+  yaml_body        = each.value
   wait_for_rollout = false
 }
 
@@ -55,8 +55,8 @@ data "kubectl_file_documents" "tekton_triggers" {
 }
 
 resource "kubectl_manifest" "tekton_triggers" {
-  count            = length(data.kubectl_file_documents.tekton_triggers.documents)
-  yaml_body        = element(data.kubectl_file_documents.tekton_triggers.documents, count.index)
+  for_each         = data.kubectl_file_documents.tekton_triggers.manifests
+  yaml_body        = each.value
   wait_for_rollout = false
 }
 
@@ -70,8 +70,8 @@ data "kubectl_file_documents" "tekton_triggers_interceptors" {
 }
 
 resource "kubectl_manifest" "tekton_triggers_interceptors" {
-  count            = length(data.kubectl_file_documents.tekton_triggers_interceptors.documents)
-  yaml_body        = element(data.kubectl_file_documents.tekton_triggers_interceptors.documents, count.index)
+  for_each         = data.kubectl_file_documents.tekton_triggers_interceptors.manifests
+  yaml_body        = each.value
   wait_for_rollout = false
 }
 
