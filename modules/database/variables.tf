@@ -10,6 +10,10 @@ variable "project" {
   type = string
 }
 
+variable "mongodb_operator_version" {
+  type = string
+}
+
 variable "mongodb_replicas" {
   type = number
 }

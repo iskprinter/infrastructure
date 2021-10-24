@@ -8,6 +8,14 @@ locals {
   neo4j_chart_name                  = "neo4j"
   neo4j_release_name                = "neo4j"
   release                           = "mongodb"
+
+  mongodb_operator_files = [
+    "config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml",
+    "config/rbac/role.yaml",
+    "config/rbac/role_binding.yaml",
+    "config/rbac/service_account.yaml",
+    "config/manager/manager.yaml"
+  ]
 }
 
 # Neo4J
@@ -54,24 +62,28 @@ resource "helm_release" "neo4j" {
 
 # MongoDB
 
+data "http" "mongodb_community_operator" {
+  for_each = toset(local.mongodb_operator_files)
+  url      = "https://raw.githubusercontent.com/mongodb/mongodb-kubernetes-operator/v${var.mongodb_operator_version}/${each.value}"
+}
+
+data "kubectl_file_documents" "mongodb_community_operator" {
+  for_each = data.http.mongodb_community_operator
+  content  = each.value.body
+}
+
+resource "kubectl_manifest" "mongodb_community_operator" {
+  for_each           = merge([for file in data.kubectl_file_documents.mongodb_community_operator : file.manifests]...)
+  yaml_body          = each.value
+  override_namespace = local.namespace
+}
+
 resource "random_password" "mongodb_user_admin_password" {
   length      = 16
   min_lower   = 1
   min_numeric = 1
   min_special = 1
   min_upper   = 1
-}
-
-resource "helm_release" "mongodb_operator" {
-  name             = local.release
-  chart            = "${path.module}/mongodb"
-  namespace        = local.namespace
-  create_namespace = true
-  recreate_pods    = true
-  set_sensitive {
-    name  = "password"
-    value = random_password.mongodb_user_admin_password.result
-  }
 }
 
 resource "kubernetes_secret" "mongodb_user_admin_credentials" {
@@ -108,7 +120,7 @@ resource "kubernetes_secret" "mongodb_user_api_credentials" {
 
 resource "kubectl_manifest" "mongodb" {
   depends_on = [
-    helm_release.mongodb_operator
+    kubectl_manifest.mongodb_community_operator
   ]
   yaml_body = yamlencode({
     apiVersion = "mongodbcommunity.mongodb.com/v1"
@@ -143,7 +155,7 @@ resource "kubectl_manifest" "mongodb" {
               db   = "admin"
             }
           ]
-          scramCredentialsSecretName = "my-scram"
+          scramCredentialsSecretName = local.mongodb_user_admin_username
         },
         {
           name = local.mongodb_user_api_username
@@ -157,7 +169,7 @@ resource "kubectl_manifest" "mongodb" {
               db   = "isk-printer"
             }
           ]
-          scramCredentialsSecretName = "my-scram"
+          scramCredentialsSecretName = local.mongodb_user_api_username
         }
       ]
       additionalMongodConfig = {
