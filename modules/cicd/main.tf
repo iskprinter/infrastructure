@@ -588,8 +588,8 @@ resource "kubectl_manifest" "trigger_binding_github_pr" {
           value = "$(body.repository.name)"
         },
         {
-          name  = "revision"
-          value = "$(body.pull_request.head.sha)"
+          name  = "pr-number"
+          value = "$(body.number)"
         },
         {
           name  = "repo-url"
@@ -658,7 +658,7 @@ resource "kubectl_manifest" "trigger_template_github_image_pr" {
           name = "repo-url"
         },
         {
-          name = "revision"
+          name = "pr-number"
         },
         {
           name = "github-status-url"
@@ -686,8 +686,8 @@ resource "kubectl_manifest" "trigger_template_github_image_pr" {
                 value = "$(tt.params.repo-url)"
               },
               {
-                name  = "revision"
-                value = "$(tt.params.revision)"
+                name  = "pr-number"
+                value = "$(tt.params.pr-number)"
               },
               {
                 name  = "github-status-url"
@@ -739,7 +739,7 @@ resource "kubectl_manifest" "trigger_template_github_release_pr" {
           name = "repo-url"
         },
         {
-          name = "revision"
+          name = "pr-number"
         },
         {
           name = "github-status-url"
@@ -763,8 +763,8 @@ resource "kubectl_manifest" "trigger_template_github_release_pr" {
                 value = "$(tt.params.repo-url)"
               },
               {
-                name  = "revision"
-                value = "$(tt.params.revision)"
+                name  = "pr-number"
+                value = "$(tt.params.pr-number)"
               },
               {
                 name  = "github-status-url"
@@ -889,9 +889,9 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
           description = "The URL of the repo to build"
         },
         {
-          name        = "revision"
+          name        = "pr-number"
           type        = "string"
-          description = "The revision to of the repo to build"
+          description = "The number of the PR to build"
         },
         {
           name        = "github-status-url"
@@ -922,9 +922,9 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
           }
         },
         {
-          name = "github-checkout"
+          name = "github-checkout-pr"
           taskRef = {
-            name = "github-checkout"
+            name = "github-checkout-pr"
           }
           workspaces = [
             {
@@ -938,17 +938,20 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
               value = "$(params.repo-url)"
             },
             {
-              name  = "revision"
-              value = "$(params.revision)"
+              name  = "pr-number"
+              value = "$(params.pr-number)"
             }
           ]
         },
         {
           runAfter = [
             "report-initial-status",
-            "github-checkout"
+            "github-checkout-pr"
           ]
           name = "build-and-push-image"
+          taskRef = {
+            name = "build-and-push-image"
+          }
           params = [
             {
               name  = "image-name"
@@ -956,7 +959,7 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
             },
             {
               name  = "image-tag"
-              value = "$(params.revision)"
+              value = "$(tasks.github-checkout-pr.results.revision)"
             }
           ]
           workspaces = [
@@ -965,9 +968,6 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
               workspace = "default" # Must match above
             }
           ]
-          taskRef = {
-            name = "build-and-push-image"
-          }
         }
       ]
       finally = [
@@ -1012,9 +1012,9 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
           description = "The URL of the repo to build"
         },
         {
-          name        = "revision"
+          name        = "pr-number"
           type        = "string"
-          description = "The revision to of the repo to build"
+          description = "The number to of the PR to build"
         },
         {
           name        = "github-status-url"
@@ -1045,9 +1045,9 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
           }
         },
         {
-          name = "github-checkout"
+          name = "github-checkout-pr"
           taskRef = {
-            name = "github-checkout"
+            name = "github-checkout-pr"
           }
           params = [
             {
@@ -1055,8 +1055,8 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
               value = "$(params.repo-url)"
             },
             {
-              name  = "revision"
-              value = "$(params.revision)"
+              name  = "pr-number"
+              value = "$(params.pr-number)"
             }
           ]
           workspaces = [
@@ -1069,7 +1069,7 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
         {
           runAfter = [
             "report-initial-status",
-            "github-checkout"
+            "github-checkout-pr"
           ]
           name = "terraform-plan"
           workspaces = [
@@ -1137,9 +1137,9 @@ resource "kubectl_manifest" "pipeline_github_release_push" {
       ]
       tasks = [
         {
-          name = "github-checkout"
+          name = "github-checkout-commit"
           taskRef = {
-            name = "github-checkout"
+            name = "github-checkout-commit"
           }
           params = [
             {
@@ -1160,7 +1160,7 @@ resource "kubectl_manifest" "pipeline_github_release_push" {
         },
         {
           runAfter = [
-            "github-checkout"
+            "github-checkout-commit"
           ]
           name = "terraform-apply"
           workspaces = [
@@ -1236,13 +1236,76 @@ resource "kubectl_manifest" "task_report_status" {
   })
 }
 
-resource "kubectl_manifest" "task_github_checkout" {
+resource "kubectl_manifest" "task_github_checkout_pr" {
   yaml_body = yamlencode({
     apiVersion = "tekton.dev/v1beta1"
     kind       = "Task"
     metadata = {
       "namespace" = "tekton-pipelines"
-      "name"      = "github-checkout"
+      "name"      = "github-checkout-pr"
+    }
+    spec = {
+      params = [
+        {
+          name        = "repo-url"
+          description = "Repository URL to clone from."
+          type        = "string"
+        },
+        {
+          name        = "pr-number"
+          description = "PR number to check out."
+          type        = "string"
+        }
+      ]
+      "workspaces" = [
+        {
+          name      = "default"
+          mountPath = "/workspace"
+        }
+      ]
+      results = [
+        {
+          name        = "revision"
+          description = "The git commit hash"
+        }
+      ]
+      steps = [
+        {
+          name       = "github-checkout"
+          image      = "alpine/git:v2.32.0"
+          workingDir = "$(workspaces.default.path)"
+          env = [
+            {
+              name  = "REPO_URL"
+              value = "$(params.repo-url)"
+            },
+            {
+              name  = "PR_NUMBER"
+              value = "$(params.pr-number)"
+            }
+          ]
+          script = <<-EOF
+            #!/bin/sh
+            set -eux
+            git init
+            git remote add origin "$${REPO_URL}"
+            git fetch origin "pull/$${PR_NUMBER}/head:pull/$${PR_NUMBER}" --depth=1
+            git checkout "pull/$${PR_NUMBER}"
+            git rev-parse --verify HEAD > '$(results.revision.path)'
+            EOF
+        }
+      ]
+    }
+  })
+}
+
+resource "kubectl_manifest" "task_github_checkout_commit" {
+  yaml_body = yamlencode({
+    apiVersion = "tekton.dev/v1beta1"
+    kind       = "Task"
+    metadata = {
+      "namespace" = "tekton-pipelines"
+      "name"      = "github-checkout-commit"
     }
     spec = {
       params = [
