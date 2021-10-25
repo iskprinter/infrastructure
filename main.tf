@@ -7,6 +7,12 @@ terraform {
 
 data "google_client_config" "current" {}
 
+module "backups" {
+  source  = "./modules/backups"
+  project = var.project
+  region  = var.region
+}
+
 module "cluster" {
   source   = "./modules/cluster/"
   project  = var.project
@@ -54,8 +60,6 @@ module "iskprinter" {
 
 module "database" {
   source                       = "./modules/database/"
-  cicd_bot_name                = var.cicd_bot_name
-  cicd_namespace               = module.cicd.cicd_namespace
   mongodb_operator_version     = var.mongodb_operator_version
   mongodb_replicas             = var.mongodb_replicas
   neo4j_persistent_volume_size = var.neo4j_persistent_volume_size

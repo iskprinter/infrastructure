@@ -1,11 +1,3 @@
-variable "cicd_bot_name" {
-  type = string
-}
-
-variable "cicd_namespace" {
-  type = string
-}
-
 variable "project" {
   type = string
 }
