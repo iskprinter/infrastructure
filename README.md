@@ -94,3 +94,31 @@ Deploys a Kubernetes cluster and supporting resources
         gke_cameronhudson8_us-west1-a_iskprinter \
         iskprinter
     ```
+
+# How to upgrade the MongoDB operator
+
+The MongoDB operator is released in a... suboptimal way: As a repo of yaml files, only some of which are necessary, and some of which require manual editing prior to application to the cluster.
+
+1. Remove the existing operator files.
+    ```
+    rm -rf modules/operator_mongodb/lib/mongodb_kubernetes_operator_*
+    ```
+
+1. Visit the repo of the [MongoDB Community Operator](https://github.com/mongodb/mongodb-kubernetes-operator) and determine which version you want to install. Then, clone it.
+    ```
+    VERSION='<version>'
+    git clone git@github.com:mongodb/mongodb-kubernetes-operator.git \
+        "./modules/operator_mongodb/lib/mongodb_kubernetes_operator" \
+        --single-branch \
+        --branch "$VERSION"
+    rm -rf "./modules/operator_mongodb/lib/mongodb_kubernetes_operator/.git"
+    ```
+
+1. Follow [the instructions](https://github.com/mongodb/mongodb-kubernetes-operator/blob/master/docs/install-upgrade.md#operator-in-different-namespace-than-resources) to configure the operator to watch for resources in all namespaces.
+
+1. Based on the installation instructions, confirm that the list of files to deploy at the top of `./modules/operator_mongodb/main.tf` is exhaustive.
+
+1. Apply the changes.
+    ```
+    terraform apply
+    ```

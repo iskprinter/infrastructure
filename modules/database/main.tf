@@ -8,14 +8,6 @@ locals {
   neo4j_chart_name                  = "neo4j"
   neo4j_release_name                = "neo4j"
   release                           = "mongodb"
-
-  mongodb_operator_files = [
-    "config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml",
-    "config/rbac/role.yaml",
-    "config/rbac/role_binding.yaml",
-    "config/rbac/service_account.yaml",
-    "config/manager/manager.yaml"
-  ]
 }
 
 # Neo4J
@@ -62,22 +54,6 @@ resource "helm_release" "neo4j" {
 
 # MongoDB
 
-data "http" "mongodb_community_operator" {
-  for_each = toset(local.mongodb_operator_files)
-  url      = "https://raw.githubusercontent.com/mongodb/mongodb-kubernetes-operator/v${var.mongodb_operator_version}/${each.value}"
-}
-
-data "kubectl_file_documents" "mongodb_community_operator" {
-  for_each = data.http.mongodb_community_operator
-  content  = each.value.body
-}
-
-resource "kubectl_manifest" "mongodb_community_operator" {
-  for_each           = merge([for file in data.kubectl_file_documents.mongodb_community_operator : file.manifests]...)
-  yaml_body          = each.value
-  override_namespace = local.namespace
-}
-
 resource "random_password" "mongodb_user_admin_password" {
   length      = 16
   min_lower   = 1
@@ -119,9 +95,6 @@ resource "kubernetes_secret" "mongodb_user_api_credentials" {
 }
 
 resource "kubectl_manifest" "mongodb" {
-  depends_on = [
-    kubectl_manifest.mongodb_community_operator
-  ]
   yaml_body = yamlencode({
     apiVersion = "mongodbcommunity.mongodb.com/v1"
     kind       = "MongoDBCommunity"

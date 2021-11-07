@@ -58,9 +58,12 @@ module "iskprinter" {
   project                               = var.project
 }
 
+module "operator_mongodb" {
+  source = "./modules/operator_mongodb"
+}
+
 module "database" {
   source                       = "./modules/database/"
-  mongodb_operator_version     = var.mongodb_operator_version
   mongodb_replicas             = var.mongodb_replicas
   neo4j_persistent_volume_size = var.neo4j_persistent_volume_size
   neo4j_replicas               = var.neo4j_replicas
