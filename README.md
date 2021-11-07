@@ -122,3 +122,5 @@ The MongoDB operator is released in a... suboptimal way: As a repo of yaml files
     ```
     terraform apply
     ```
+
+1. Even though the operator is deployed in a cluster-wide fashion, there are still additional resources from the operator repository that must accompany any database deployed in the cluster. Therefore, update rbac in the `db_document` Terraform module of the [iskprinter/application repository](https://github.com/iskprinter/application) in accordancew ith the [operator installation instructions](https://github.com/mongodb/mongodb-kubernetes-operator/blob/master/docs/install-upgrade.md#operator-in-different-namespace-than-resources) 

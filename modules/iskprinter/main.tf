@@ -28,6 +28,55 @@ resource "google_project_iam_member" "service_account_dns_record_sets_binding" {
   member  = "serviceAccount:${var.google_service_account_cicd_bot_email}"
 }
 
+resource "kubernetes_role" "releaser_database" {
+  metadata {
+    namespace = "database"
+    name      = "releaser"
+  }
+  rule {
+    api_groups = [""]
+    resources  = ["secrets"]
+    verbs      = ["get", "list"]
+  }
+  rule {
+    api_groups = [""]
+    resources  = ["persistentvolumeclaims"]
+    verbs      = ["get"]
+  }
+  rule {
+    api_groups = [""]
+    resources  = ["serviceaccounts"]
+    verbs      = ["get"]
+  }
+  rule {
+    api_groups = ["rbac.authorization.k8s.io"]
+    resources  = ["rolebindings", "roles"]
+    verbs      = ["get"]
+  }
+  rule {
+    api_groups = ["mongodbcommunity.mongodb.com"]
+    resources  = ["mongodbcommunity"]
+    verbs      = ["get"]
+  }
+}
+
+resource "kubernetes_role_binding" "releasers_database" {
+  metadata {
+    namespace = "database"
+    name      = "releasers"
+  }
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "Role"
+    name      = "releaser"
+  }
+  subject {
+    kind      = "ServiceAccount"
+    namespace = var.cicd_namespace
+    name      = var.cicd_bot_name
+  }
+}
+
 resource "kubernetes_role" "releaser_iskprinter" {
   metadata {
     namespace = "iskprinter"
@@ -57,6 +106,11 @@ resource "kubernetes_role" "releaser_iskprinter" {
     api_groups = ["extensions"]
     resources  = ["ingresses"]
     verbs      = ["create", "get", "patch", "update", "delete"]
+  }
+  rule {
+    api_groups = [""]
+    resources  = ["serviceaccounts"]
+    verbs      = ["get"]
   }
 }
 
