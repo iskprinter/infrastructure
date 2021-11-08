@@ -1,3 +1,9 @@
+
+variable "namespace" {
+  type    = string
+  default = "cert-manager"
+}
+
 variable "project" {
   type = string
 }

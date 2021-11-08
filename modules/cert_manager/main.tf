@@ -1,7 +1,3 @@
-locals {
-  namespace = "cert-manager"
-}
-
 resource "google_service_account" "cert_manager" {
   project      = var.project
   account_id   = "cert-manager"
@@ -11,7 +7,7 @@ resource "google_service_account" "cert_manager" {
 resource "google_service_account_iam_member" "service_account_iam_workload_identity_user_binding" {
   service_account_id = google_service_account.cert_manager.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "serviceAccount:${var.project}.svc.id.goog[${local.namespace}/cert-manager]"
+  member             = "serviceAccount:${var.project}.svc.id.goog[${var.namespace}/cert-manager]"
 }
 
 resource "google_project_iam_member" "service_account_dns_record_sets_binding" {
@@ -25,7 +21,7 @@ resource "helm_release" "cert_manager" {
   repository       = "https://charts.jetstack.io"
   chart            = "cert-manager"
   version          = var.cert_manager_version
-  namespace        = local.namespace
+  namespace        = var.namespace
   create_namespace = true
   set {
     name  = "installCRDs"

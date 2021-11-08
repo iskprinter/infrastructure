@@ -1,4 +1,3 @@
-
 # GCP Environment
 
 variable "project" {
@@ -49,13 +48,6 @@ variable "nginx_version" {
 }
 
 # Database
-
-# If upgrading this version, confirm that all necessary RBAC files
-# are listed in the local variable at the top of ./modules/database/main.tf
-variable "mongodb_operator_version" {
-  type = string
-  default = "0.7.0"  
-}
 
 variable "mongodb_replicas" {
   type    = number

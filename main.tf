@@ -7,6 +7,12 @@ terraform {
 
 data "google_client_config" "current" {}
 
+module "backups" {
+  source  = "./modules/backups"
+  project = var.project
+  region  = var.region
+}
+
 module "cluster" {
   source   = "./modules/cluster/"
   project  = var.project
@@ -52,17 +58,8 @@ module "iskprinter" {
   project                               = var.project
 }
 
-module "database" {
-  source                       = "./modules/database/"
-  cicd_bot_name                = var.cicd_bot_name
-  cicd_namespace               = module.cicd.cicd_namespace
-  mongodb_operator_version     = var.mongodb_operator_version
-  mongodb_replicas             = var.mongodb_replicas
-  neo4j_persistent_volume_size = var.neo4j_persistent_volume_size
-  neo4j_replicas               = var.neo4j_replicas
-  neo4j_version                = var.neo4j_version
-  project                      = var.project
-  region                       = var.region
+module "operator_mongodb" {
+  source = "./modules/operator_mongodb"
 }
 
 module "cicd" {
@@ -79,8 +76,8 @@ module "cicd" {
   github_known_hosts_base64                = var.github_known_hosts_base64
   ingress_ip                               = module.ingress.ip
   kaniko_version                           = var.kaniko_version
-  mongodb_connection_secret_key_url        = module.database.mongodb_connection_secret_key_url
-  mongodb_connection_secret_name           = module.database.mongodb_connection_secret_name
+  mongodb_connection_secret_key_url        = "url"
+  mongodb_connection_secret_name           = "mongodb-connection"
   project                                  = var.project
   region                                   = var.region
   tekton_dashboard_version                 = var.tekton_dashboard_version

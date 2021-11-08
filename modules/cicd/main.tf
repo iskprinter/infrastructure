@@ -220,6 +220,16 @@ resource "kubernetes_cluster_role" "cicd_bot" {
     resources  = ["clustertriggerbindings", "clusterinterceptors"]
     verbs      = ["get", "list", "watch"]
   }
+  rule {
+    api_groups = [""]
+    resources  = ["namespaces"]
+    verbs      = ["get"]
+  }
+  rule {
+    api_groups = ["apiextensions.k8s.io"]
+    resources  = ["customresourcedefinitions"]
+    verbs      = ["list"]
+  }
 }
 
 # Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
