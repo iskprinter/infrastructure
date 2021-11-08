@@ -112,6 +112,11 @@ resource "kubernetes_role" "releaser_iskprinter" {
     resources  = ["serviceaccounts"]
     verbs      = ["get"]
   }
+  rule {
+    api_groups = [""]
+    resources  = ["secrets"]
+    verbs      = ["get"]
+  }
 }
 
 resource "kubernetes_role_binding" "releasers_iskprinter" {
