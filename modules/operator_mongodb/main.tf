@@ -2,6 +2,7 @@ locals {
   mongodb_operator_files = [
     "${path.module}/lib/mongodb_kubernetes_operator/config/crd/bases/mongodbcommunity.mongodb.com_mongodbcommunity.yaml",
     "${path.module}/lib/mongodb_kubernetes_operator/config/manager/manager.yaml",
+    "${path.module}/lib/mongodb_kubernetes_operator/config/rbac/service_account.yaml",
     "${path.module}/lib/mongodb_kubernetes_operator/deploy/clusterwide/role_binding.yaml",
     "${path.module}/lib/mongodb_kubernetes_operator/deploy/clusterwide/role.yaml",
   ]
