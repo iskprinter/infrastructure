@@ -121,15 +121,24 @@ resource "google_service_account_iam_member" "cicd_bot_iam_workload_identity_use
   member             = "serviceAccount:${var.project}.svc.id.goog[${kubernetes_service_account.cicd_bot.metadata[0].namespace}/${kubernetes_service_account.cicd_bot.metadata[0].name}]"
 }
 
-resource "google_project_iam_member" "cicd_bot_storage_object_admin_binding" {
+resource "google_project_iam_custom_role" "cicd_bot_role" {
   project = var.project
-  role    = "roles/storage.objectAdmin"
-  member  = "serviceAccount:${google_service_account.cicd_bot.email}"
+  role_id = "cicd_bot"
+  title   = "CICD Bot"
+  permissions = [
+    "storage.buckets.get"
+  ]
 }
 
-resource "google_project_iam_member" "cicd_bot_artifact_registry_writer_binding" {
+resource "google_service_account_iam_member" "cicd_bot_role_binding" {
+  service_account_id = google_service_account.cicd_bot.name
+  role               = google_project_iam_custom_role.cicd_bot_role.name
+  member             = "serviceAccount:${google_service_account.cicd_bot.email}"
+}
+
+resource "google_project_iam_member" "cicd_bot_storage_admin_binding" {
   project = var.project
-  role    = "roles/artifactregistry.writer"
+  role    = google_project_iam_custom_role.cicd_bot_role.name
   member  = "serviceAccount:${google_service_account.cicd_bot.email}"
 }
 
@@ -1221,7 +1230,7 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
             "report-initial-status",
             "github-checkout-commit"
           ]
-          name = "terraform-plan"
+          name = "terragrunt-plan"
           workspaces = [
             {
               name      = "default"
@@ -1229,7 +1238,7 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
             }
           ]
           taskRef = {
-            name = "terraform-plan"
+            name = "terragrunt-plan"
           }
         }
       ]
@@ -1320,7 +1329,7 @@ resource "kubectl_manifest" "pipeline_github_release_push" {
           runAfter = [
             "github-checkout-commit"
           ]
-          name = "terraform-apply"
+          name = "terragrunt-apply"
           workspaces = [
             {
               name      = "default"
@@ -1328,7 +1337,7 @@ resource "kubectl_manifest" "pipeline_github_release_push" {
             }
           ]
           taskRef = {
-            name = "terraform-apply"
+            name = "terragrunt-apply"
           }
         }
       ]
@@ -1672,18 +1681,18 @@ resource "kubectl_manifest" "task_build_and_push_image" {
   })
 }
 
-resource "kubectl_manifest" "task_terraform_plan" {
+resource "kubectl_manifest" "task_terragrunt_plan" {
   yaml_body = yamlencode({
     apiVersion = "tekton.dev/v1beta1"
     kind       = "Task"
     metadata = {
-      name      = "terraform-plan"
+      name      = "terragrunt-plan"
       namespace = "tekton-pipelines"
     }
     spec = {
       steps = [
         {
-          name = "terraform-plan"
+          name = "terragrunt-plan"
           env = [
             {
               name  = "TF_VAR_api_client_credentials_secret_key_id"
@@ -1706,19 +1715,19 @@ resource "kubectl_manifest" "task_terraform_plan" {
               value = "${var.mongodb_connection_secret_key_url}"
             },
           ]
-          image      = "hashicorp/terraform:${var.terraform_version}"
+          image      = "alpine/terragrunt:${var.terraform_version}"
           workingDir = "$(workspaces.default.path)"
           script     = <<-EOF
             #!/bin/sh
             set -eux
-            cp .terraform.lock.hcl .terraform.lock.hcl.bak
-            terraform init
-            if ! diff -q .terraform.lock.hcl .terraform.lock.hcl.bak; then
+            cp ./config/prod/.terraform.lock.hcl ./config/prod/.terraform.lock.hcl.bak
+            terragrunt init --terragrunt-working-dir ./config/prod
+            if ! diff -q ./config/prod/.terraform.lock.hcl ./config/prod/.terraform.lock.hcl.bak; then
                 echo "Update your lockfile with this content:"
-                cat .terraform.lock.hcl
+                cat ./config/prod/.terraform.lock.hcl
                 exit 1
             fi
-            terraform plan
+            terragrunt plan --terragrunt-working-dir ./config/prod
             EOF
         }
       ]
@@ -1732,18 +1741,18 @@ resource "kubectl_manifest" "task_terraform_plan" {
   })
 }
 
-resource "kubectl_manifest" "task_terraform_apply" {
+resource "kubectl_manifest" "task_terragrunt_apply" {
   yaml_body = yamlencode({
     apiVersion = "tekton.dev/v1beta1"
     kind       = "Task"
     metadata = {
-      name      = "terraform-apply"
+      name      = "terragrunt-apply"
       namespace = "tekton-pipelines"
     }
     spec = {
       steps = [
         {
-          name = "terraform-apply"
+          name = "terragrunt-apply"
           env = [
             {
               name  = "TF_VAR_api_client_credentials_secret_key_id"
@@ -1766,14 +1775,14 @@ resource "kubectl_manifest" "task_terraform_apply" {
               value = "${var.mongodb_connection_secret_key_url}"
             },
           ]
-          image      = "hashicorp/terraform:${var.terraform_version}"
+          image      = "alpine/terragrunt:${var.terraform_version}"
           workingDir = "$(workspaces.default.path)"
           script     = <<-EOF
             #!/bin/sh
             set -eux
-            terraform init -lockfile=readonly
-            if ! terraform apply -auto-approve -backup=./backup.tfstate; then
-              terraform apply -auto-approve -state=./backup.tfstate
+            terragrunt init -lockfile=readonly --terragrunt-working-dir ./config/prod
+            if ! terragrunt apply -auto-approve -backup=./backup.tfstate --terragrunt-working-dir ./config/prod; then
+              terragrunt apply -auto-approve -state=./backup.tfstate --terragrunt-working-dir ./config/prod
               exit 1
             fi
             EOF

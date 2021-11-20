@@ -132,7 +132,7 @@ variable "tekton_dashboard_version" {
 
 variable "terraform_version" {
   type    = string
-  default = "1.0.9"
+  default = "1.0.11"
 }
 
 # Certificates
