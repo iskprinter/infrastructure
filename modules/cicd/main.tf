@@ -1454,7 +1454,9 @@ resource "kubectl_manifest" "task_get_secret" {
                     -o jsonpath="{.data.$${SECRET_KEY}}" \
                 | base64 -d
             )
-            echo -n "$secret_value" | tee $(results.secret-value.path)
+            set +x
+            echo -n "$secret_value" > $(results.secret-value.path)
+            set -x
             EOF
         }
       ]
