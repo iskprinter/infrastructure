@@ -1772,7 +1772,10 @@ resource "kubectl_manifest" "task_terraform_apply" {
             #!/bin/sh
             set -eux
             terraform init -lockfile=readonly
-            terraform apply -auto-approve
+            if ! terraform apply -auto-approve -backup=./backup.tfstate; then
+              terraform apply -auto-approve -state=./backup.tfstate
+              exit 1
+            fi
             EOF
         }
       ]
