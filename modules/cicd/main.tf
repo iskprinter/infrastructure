@@ -126,7 +126,10 @@ resource "google_project_iam_custom_role" "cicd_bot_role" {
   role_id = "cicd_bot"
   title   = "CICD Bot"
   permissions = [
-    "storage.buckets.get"
+    "storage.buckets.get",
+    "storage.objects.create",
+    "storage.objects.delete",
+    "storage.objects.list",
   ]
 }
 
