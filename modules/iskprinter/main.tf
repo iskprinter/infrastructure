@@ -99,7 +99,7 @@ resource "kubernetes_role" "releaser_iskprinter" {
   }
   rule {
     api_groups = ["batch"]
-    resources  = ["cronjobs"]
+    resources  = ["cronjobs", "jobs"]
     verbs      = ["create", "get", "patch", "update", "delete"]
   }
   rule {
