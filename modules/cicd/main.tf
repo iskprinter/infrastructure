@@ -126,8 +126,11 @@ resource "google_project_iam_custom_role" "cicd_bot_role" {
   role_id = "cicd_bot"
   title   = "CICD Bot"
   permissions = [
+    "dns.changes.create",
+    "dns.changes.get",
     "dns.resourceRecordSets.get",
     "dns.resourceRecordSets.list",
+    "dns.resourceRecordSets.update",
     "storage.buckets.get",
     "storage.objects.create",
     "storage.objects.delete",
@@ -1772,8 +1775,8 @@ resource "kubectl_manifest" "task_terragrunt_apply" {
             #!/bin/sh
             set -eux
             terragrunt run-all init -lockfile=readonly --terragrunt-working-dir ./config/prod
-            if ! terragrunt run-all apply -auto-approve -backup=./backup.tfstate --terragrunt-working-dir ./config/prod; then
-              terragrunt run-all apply -auto-approve -state=./backup.tfstate --terragrunt-working-dir ./config/prod
+            if ! terragrunt run-all apply -auto-approve -backup=./backup.tfstate --terragrunt-non-interactive --terragrunt-working-dir ./config/prod; then
+              terragrunt run-all apply -auto-approve -state=./backup.tfstate --terragrunt-non-interactive --terragrunt-working-dir ./config/prod
               exit 1
             fi
             EOF
