@@ -14,6 +14,10 @@ variable "api_client_credentials_secret_name" {
   type = string
 }
 
+variable "api_client_credentials_secret_namespace" {
+  type = string
+}
+
 variable "cicd_bot_github_username" {
   type = string
 }
@@ -45,14 +49,6 @@ variable "ingress_ip" {
 }
 
 variable "kaniko_version" {
-  type = string
-}
-
-variable "mongodb_connection_secret_name" {
-  type = string
-}
-
-variable "mongodb_connection_secret_key_url" {
   type = string
 }
 

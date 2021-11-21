@@ -126,9 +126,12 @@ resource "google_project_iam_custom_role" "cicd_bot_role" {
   role_id = "cicd_bot"
   title   = "CICD Bot"
   permissions = [
+    "dns.resourceRecordSets.get",
+    "dns.resourceRecordSets.list",
     "storage.buckets.get",
     "storage.objects.create",
     "storage.objects.delete",
+    "storage.objects.get",
     "storage.objects.list",
   ]
 }
@@ -164,7 +167,7 @@ resource "kubernetes_role" "cicd_bot" {
   ]
   metadata {
     namespace = "tekton-pipelines"
-    name      = "cicd-bot-role"
+    name      = "cicd-bot"
   }
   # EventListeners need to be able to fetch all namespaced resources
   rule {
@@ -206,8 +209,8 @@ resource "kubernetes_role" "cicd_bot" {
 # Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
 resource "kubernetes_role_binding" "cicd_bot" {
   metadata {
-    namespace = kubernetes_service_account.cicd_bot.metadata[0].namespace
-    name      = "cicd-bot-role-binding"
+    namespace = kubernetes_role.cicd_bot.metadata[0].namespace
+    name      = "cicd-bot"
   }
   subject {
     kind      = "ServiceAccount"
@@ -224,7 +227,7 @@ resource "kubernetes_role_binding" "cicd_bot" {
 # Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
 resource "kubernetes_cluster_role" "cicd_bot" {
   metadata {
-    name = "cicd-bot-cluster-role"
+    name = "cicd-bot"
   }
   rule {
     # EventListeners need to be able to fetch any clustertriggerbindings, and clusterinterceptors
@@ -247,7 +250,7 @@ resource "kubernetes_cluster_role" "cicd_bot" {
 # Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
 resource "kubernetes_cluster_role_binding" "cicd_bot" {
   metadata {
-    name = "cicd-bot-cluster-role-binding"
+    name = "cicd-bot"
   }
   subject {
     kind      = "ServiceAccount"
@@ -1710,12 +1713,8 @@ resource "kubectl_manifest" "task_terragrunt_plan" {
               value = "${var.api_client_credentials_secret_name}"
             },
             {
-              name  = "TF_VAR_mongodb_connection_secret_name"
-              value = "${var.mongodb_connection_secret_name}"
-            },
-            {
-              name  = "TF_VAR_mongodb_connection_secret_key_url"
-              value = "${var.mongodb_connection_secret_key_url}"
+              name  = "TF_VAR_api_client_credentials_secret_namespace"
+              value = "${var.api_client_credentials_secret_namespace}"
             },
           ]
           image      = "alpine/terragrunt:${var.terraform_version}"
@@ -1723,14 +1722,7 @@ resource "kubectl_manifest" "task_terragrunt_plan" {
           script     = <<-EOF
             #!/bin/sh
             set -eux
-            cp ./config/prod/.terraform.lock.hcl ./config/prod/.terraform.lock.hcl.bak
-            terragrunt init --terragrunt-working-dir ./config/prod
-            if ! diff -q ./config/prod/.terraform.lock.hcl ./config/prod/.terraform.lock.hcl.bak; then
-                echo "Update your lockfile with this content:"
-                cat ./config/prod/.terraform.lock.hcl
-                exit 1
-            fi
-            terragrunt plan --terragrunt-working-dir ./config/prod
+            terragrunt run-all plan --terragrunt-working-dir ./config/prod
             EOF
         }
       ]
@@ -1770,12 +1762,8 @@ resource "kubectl_manifest" "task_terragrunt_apply" {
               value = "${var.api_client_credentials_secret_name}"
             },
             {
-              name  = "TF_VAR_mongodb_connection_secret_name"
-              value = "${var.mongodb_connection_secret_name}"
-            },
-            {
-              name  = "TF_VAR_mongodb_connection_secret_key_url"
-              value = "${var.mongodb_connection_secret_key_url}"
+              name  = "TF_VAR_api_client_credentials_secret_namespace"
+              value = "${var.api_client_credentials_secret_namespace}"
             },
           ]
           image      = "alpine/terragrunt:${var.terraform_version}"
@@ -1783,9 +1771,9 @@ resource "kubectl_manifest" "task_terragrunt_apply" {
           script     = <<-EOF
             #!/bin/sh
             set -eux
-            terragrunt init -lockfile=readonly --terragrunt-working-dir ./config/prod
-            if ! terragrunt apply -auto-approve -backup=./backup.tfstate --terragrunt-working-dir ./config/prod; then
-              terragrunt apply -auto-approve -state=./backup.tfstate --terragrunt-working-dir ./config/prod
+            terragrunt run-all init -lockfile=readonly --terragrunt-working-dir ./config/prod
+            if ! terragrunt run-all apply -auto-approve -backup=./backup.tfstate --terragrunt-working-dir ./config/prod; then
+              terragrunt run-all apply -auto-approve -state=./backup.tfstate --terragrunt-working-dir ./config/prod
               exit 1
             fi
             EOF

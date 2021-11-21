@@ -27,8 +27,10 @@ module "cluster" {
 }
 
 module "ingress" {
-  source        = "./modules/ingress"
-  nginx_version = var.nginx_version
+  source         = "./modules/ingress"
+  cicd_bot_name  = var.cicd_bot_name
+  cicd_namespace = var.cicd_namespace
+  nginx_version  = var.nginx_version
 }
 
 module "dns" {
@@ -48,12 +50,12 @@ module "preemption_cleanup" {
   alpine_k8s_version = var.alpine_k8s_version
 }
 
-module "iskprinter" {
-  source                                = "./modules/iskprinter"
+module "secrets" {
+  source                                = "./modules/secrets"
   api_client_id                         = var.api_client_id
   api_client_secret_base64              = var.api_client_secret_base64
   cicd_bot_name                         = var.cicd_bot_name
-  cicd_namespace                        = module.cicd.cicd_namespace
+  cicd_namespace                        = var.cicd_namespace
   google_service_account_cicd_bot_email = module.cicd.google_service_account_cicd_bot_email
   project                               = var.project
 }
@@ -65,9 +67,10 @@ module "operator_mongodb" {
 module "cicd" {
   source                                   = "./modules/cicd/"
   alpine_k8s_version                       = var.alpine_k8s_version
-  api_client_credentials_secret_key_id     = module.iskprinter.api_client_credentials_secret_key_id
-  api_client_credentials_secret_key_secret = module.iskprinter.api_client_credentials_secret_key_secret
-  api_client_credentials_secret_name       = module.iskprinter.api_client_credentials_secret_name
+  api_client_credentials_secret_key_id     = module.secrets.api_client_credentials_secret_key_id
+  api_client_credentials_secret_key_secret = module.secrets.api_client_credentials_secret_key_secret
+  api_client_credentials_secret_name       = module.secrets.api_client_credentials_secret_name
+  api_client_credentials_secret_namespace  = module.secrets.api_client_credentials_secret_namespace
   cicd_bot_github_username                 = var.cicd_bot_github_username
   cicd_bot_name                            = var.cicd_bot_name
   cicd_bot_personal_access_token_base64    = var.cicd_bot_personal_access_token_base64
@@ -76,8 +79,6 @@ module "cicd" {
   github_known_hosts_base64                = var.github_known_hosts_base64
   ingress_ip                               = module.ingress.ip
   kaniko_version                           = var.kaniko_version
-  mongodb_connection_secret_key_url        = "url"
-  mongodb_connection_secret_name           = "mongodb-connection"
   project                                  = var.project
   region                                   = var.region
   tekton_dashboard_version                 = var.tekton_dashboard_version
