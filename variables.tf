@@ -71,6 +71,11 @@ variable "neo4j_version" {
 
 # CI/CD
 
+variable "cicd_namespace" {
+  type    = string
+  default = "tekton-pipelines" # WARNING: This is not used by the cicd module itself
+}
+
 variable "alpine_k8s_version" {
   type    = string
   default = "1.20.7"
