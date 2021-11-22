@@ -203,12 +203,6 @@ resource "kubernetes_role" "cicd_bot" {
     resource_names = ["tekton-triggers"]
     verbs          = ["use"]
   }
-  rule {
-    api_groups     = [""]
-    resources      = ["secrets"]
-    resource_names = [kubernetes_secret.cicd_bot_personal_access_token.metadata[0].name]
-    verbs          = ["get"]
-  }
 }
 
 # Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
@@ -242,13 +236,74 @@ resource "kubernetes_cluster_role" "cicd_bot" {
   }
   rule {
     api_groups = [""]
+    resources  = ["configmaps"]
+    verbs      = ["create", "get", "patch", "update", "delete"]
+  }
+  rule {
+    api_groups = [""]
     resources  = ["namespaces"]
     verbs      = ["get"]
+  }
+  rule {
+    api_groups = [""]
+    resources  = ["persistentvolumeclaims"]
+    verbs      = ["get"]
+  }
+  rule {
+    api_groups = [""]
+    resources  = ["serviceaccounts"]
+    verbs      = ["create", "delete", "get"]
+  }
+  rule {
+    api_groups = [""]
+    resources  = ["secrets"]
+    verbs      = ["create", "delete", "get", "list"]
+  }
+  rule {
+    api_groups = [""]
+    resources  = ["services"]
+    verbs      = ["create", "get", "patch", "update", "delete"]
   }
   rule {
     api_groups = ["apiextensions.k8s.io"]
     resources  = ["customresourcedefinitions"]
     verbs      = ["list"]
+  }
+  rule {
+    api_groups = ["apps"]
+    resources  = ["deployments", "statefulsets"]
+    verbs      = ["create", "get", "patch", "update", "delete"]
+  }
+  rule {
+    api_groups = ["batch"]
+    resources  = ["cronjobs", "jobs"]
+    verbs      = ["create", "get", "patch", "update", "delete"]
+  }
+  rule {
+    api_groups = ["extensions"]
+    resources  = ["ingresses"]
+    verbs      = ["create", "get", "patch", "update", "delete"]
+  }
+  rule {
+    api_groups = ["mongodbcommunity.mongodb.com"]
+    resources  = ["mongodbcommunity"]
+    verbs      = ["create", "delete", "get", "patch"]
+  }
+  rule {
+    api_groups = ["rbac.authorization.k8s.io"]
+    resources  = ["rolebindings"]
+    verbs      = ["create", "delete", "get"]
+  }
+  rule {
+    api_groups = ["rbac.authorization.k8s.io"]
+    resources  = ["roles"]
+    verbs = [
+      "bind",
+      "create",
+      "delete",
+      "escalate",
+      "get"
+    ]
   }
 }
 
