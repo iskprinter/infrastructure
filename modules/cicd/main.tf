@@ -1241,15 +1241,25 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
             "report-initial-status",
             "github-checkout-commit"
           ]
-          name = "terragrunt-plan"
+          name = "terragrunt-apply"
           workspaces = [
             {
               name      = "default"
               workspace = "default" # Must match above
             }
           ]
+          params = [
+            {
+              name  = "env-name"
+              value = "preview"
+            },
+            {
+              name  = "pr-number"
+              value = "$(params.pr-number)"
+            }
+          ]
           taskRef = {
-            name = "terragrunt-plan"
+            name = "terragrunt-apply"
           }
         }
       ]
@@ -1754,13 +1764,29 @@ resource "kubectl_manifest" "task_terragrunt_apply" {
       namespace = "tekton-pipelines"
     }
     spec = {
+      params = [
+        {
+          name        = "env-name"
+          description = "The Terragrunt config directory to use. (prod|preview)"
+          default     = "prod"
+        },
+        {
+          name        = "pr-number"
+          description = "The PR number being built. Used only for PR (preview) builds."
+          default     = null
+        }
+      ]
       steps = [
         {
           name = "terragrunt-apply"
           env = [
             {
               name  = "ENV_NAME"
-              value = "prod"
+              value = "$(params.env-name)"
+            },
+            {
+              name  = "PR_NUMBER"
+              value = "$(params.pr-number)"
             },
             {
               name  = "TF_VAR_api_client_credentials_secret_key_id"
@@ -1784,8 +1810,8 @@ resource "kubectl_manifest" "task_terragrunt_apply" {
           script     = <<-EOF
             #!/bin/sh
             set -eux
-            terragrunt init -lockfile=readonly --terragrunt-working-dir "./config/$${ENV_NAME}"
             if ! terragrunt apply -auto-approve -backup=./backup.tfstate --terragrunt-non-interactive --terragrunt-working-dir "./config/$${ENV_NAME}"; then
+              echo 'Reverting to prior state' >2
               terragrunt apply -auto-approve -state=./backup.tfstate --terragrunt-non-interactive --terragrunt-working-dir "./config/$${ENV_NAME}"
               exit 1
             fi
