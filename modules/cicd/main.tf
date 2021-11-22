@@ -1706,6 +1706,10 @@ resource "kubectl_manifest" "task_terragrunt_plan" {
           name = "terragrunt-plan"
           env = [
             {
+              name  = "ENV_NAME"
+              value = "prod"
+            },
+            {
               name  = "TF_VAR_api_client_credentials_secret_key_id"
               value = "${var.api_client_credentials_secret_key_id}"
             },
@@ -1721,17 +1725,13 @@ resource "kubectl_manifest" "task_terragrunt_plan" {
               name  = "TF_VAR_api_client_credentials_secret_namespace"
               value = "${var.api_client_credentials_secret_namespace}"
             },
-            {
-              name  = "TF_VAR_env_name"
-              value = "prod"
-            },
           ]
           image      = "alpine/terragrunt:${var.terraform_version}"
           workingDir = "$(workspaces.default.path)"
           script     = <<-EOF
             #!/bin/sh
             set -eux
-            terragrunt plan --terragrunt-working-dir ./config/prod
+            terragrunt plan --terragrunt-working-dir "./config/$${ENV_NAME}"
             EOF
         }
       ]
@@ -1759,6 +1759,10 @@ resource "kubectl_manifest" "task_terragrunt_apply" {
           name = "terragrunt-apply"
           env = [
             {
+              name  = "ENV_NAME"
+              value = "prod"
+            },
+            {
               name  = "TF_VAR_api_client_credentials_secret_key_id"
               value = "${var.api_client_credentials_secret_key_id}"
             },
@@ -1774,19 +1778,15 @@ resource "kubectl_manifest" "task_terragrunt_apply" {
               name  = "TF_VAR_api_client_credentials_secret_namespace"
               value = "${var.api_client_credentials_secret_namespace}"
             },
-            {
-              name  = "TF_VAR_env_name"
-              value = "prod"
-            },
           ]
           image      = "alpine/terragrunt:${var.terraform_version}"
           workingDir = "$(workspaces.default.path)"
           script     = <<-EOF
             #!/bin/sh
             set -eux
-            terragrunt init -lockfile=readonly --terragrunt-working-dir ./config/prod
-            if ! terragrunt apply -auto-approve -backup=./backup.tfstate --terragrunt-non-interactive --terragrunt-working-dir ./config/prod; then
-              terragrunt apply -auto-approve -state=./backup.tfstate --terragrunt-non-interactive --terragrunt-working-dir ./config/prod
+            terragrunt init -lockfile=readonly --terragrunt-working-dir "./config/$${ENV_NAME}"
+            if ! terragrunt apply -auto-approve -backup=./backup.tfstate --terragrunt-non-interactive --terragrunt-working-dir "./config/$${ENV_NAME}"; then
+              terragrunt apply -auto-approve -state=./backup.tfstate --terragrunt-non-interactive --terragrunt-working-dir "./config/$${ENV_NAME}"
               exit 1
             fi
             EOF
