@@ -126,6 +126,8 @@ resource "google_project_iam_custom_role" "cicd_bot_role" {
   role_id = "cicd_bot"
   title   = "CICD Bot"
   permissions = [
+    "artifactregistry.repositories.downloadArtifacts",
+    "artifactregistry.repositories.uploadArtifacts",
     "dns.changes.create",
     "dns.changes.get",
     "dns.resourceRecordSets.get",
@@ -1719,13 +1721,17 @@ resource "kubectl_manifest" "task_terragrunt_plan" {
               name  = "TF_VAR_api_client_credentials_secret_namespace"
               value = "${var.api_client_credentials_secret_namespace}"
             },
+            {
+              name  = "TF_VAR_env_name"
+              value = "prod"
+            },
           ]
           image      = "alpine/terragrunt:${var.terraform_version}"
           workingDir = "$(workspaces.default.path)"
           script     = <<-EOF
             #!/bin/sh
             set -eux
-            terragrunt run-all plan --terragrunt-working-dir ./config/prod
+            terragrunt plan --terragrunt-working-dir ./config/prod
             EOF
         }
       ]
@@ -1768,15 +1774,19 @@ resource "kubectl_manifest" "task_terragrunt_apply" {
               name  = "TF_VAR_api_client_credentials_secret_namespace"
               value = "${var.api_client_credentials_secret_namespace}"
             },
+            {
+              name  = "TF_VAR_env_name"
+              value = "prod"
+            },
           ]
           image      = "alpine/terragrunt:${var.terraform_version}"
           workingDir = "$(workspaces.default.path)"
           script     = <<-EOF
             #!/bin/sh
             set -eux
-            terragrunt run-all init -lockfile=readonly --terragrunt-working-dir ./config/prod
-            if ! terragrunt run-all apply -auto-approve -backup=./backup.tfstate --terragrunt-non-interactive --terragrunt-working-dir ./config/prod; then
-              terragrunt run-all apply -auto-approve -state=./backup.tfstate --terragrunt-non-interactive --terragrunt-working-dir ./config/prod
+            terragrunt init -lockfile=readonly --terragrunt-working-dir ./config/prod
+            if ! terragrunt apply -auto-approve -backup=./backup.tfstate --terragrunt-non-interactive --terragrunt-working-dir ./config/prod; then
+              terragrunt apply -auto-approve -state=./backup.tfstate --terragrunt-non-interactive --terragrunt-working-dir ./config/prod
               exit 1
             fi
             EOF

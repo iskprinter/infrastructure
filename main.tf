@@ -34,9 +34,9 @@ module "ingress" {
 }
 
 module "dns" {
-  source     = "./modules/dns/"
-  project    = var.project
-  ingress_ip = module.ingress.ip
+  source      = "./modules/dns/"
+  gcp_project = var.project
+  ingress_ip  = module.ingress.ip
 }
 
 module "cert_manager" {
