@@ -117,22 +117,22 @@ variable "github_known_hosts_base64" {
 
 variable "kaniko_version" {
   type    = string
-  default = "1.3.0"
+  default = "v1.7.0-slim"
 }
 
 variable "tekton_pipeline_version" {
   type    = string
-  default = "0.29.0"
+  default = "0.30.0"
 }
 
 variable "tekton_triggers_version" {
   type    = string
-  default = "0.17.0"
+  default = "0.17.1"
 }
 
 variable "tekton_dashboard_version" {
   type    = string
-  default = "0.21.0"
+  default = "0.22.0"
 }
 
 variable "terraform_version" {
@@ -144,7 +144,7 @@ variable "terraform_version" {
 
 variable "cert_manager_version" {
   type    = string
-  default = "1.5.0"
+  default = "1.6.0"
 }
 
 # Iskprinter Namespace
