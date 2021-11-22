@@ -1,6 +1,6 @@
 terraform {
   backend "gcs" {
-    bucket = "iskprinter-tf-state-prod"
+    bucket = "iskprinter-tf-state"
     prefix = "infrastructure"
   }
 }
