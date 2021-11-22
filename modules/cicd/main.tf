@@ -242,7 +242,7 @@ resource "kubernetes_cluster_role" "cicd_bot" {
   rule {
     api_groups = [""]
     resources  = ["namespaces"]
-    verbs      = ["get"]
+    verbs      = ["create", "delete", "get"]
   }
   rule {
     api_groups = [""]
@@ -439,6 +439,9 @@ resource "kubectl_manifest" "event_listener_github" {
           triggerRef = "github-release-pr"
         },
         {
+          triggerRef = "github-release-pr-cleanup"
+        },
+        {
           triggerRef = "github-release-push"
         }
       ]
@@ -588,6 +591,68 @@ resource "kubectl_manifest" "trigger_github_release_pr" {
       ]
       template = {
         ref = "github-release-pr"
+      }
+    }
+  })
+}
+
+resource "kubectl_manifest" "trigger_github_release_pr_cleanup" {
+  depends_on = [
+    kubectl_manifest.tekton_triggers,
+    kubectl_manifest.tekton_triggers_interceptors
+  ]
+  yaml_body = yamlencode({
+    apiVersion = "triggers.tekton.dev/v1beta1"
+    kind       = "Trigger"
+    metadata = {
+      namespace = "tekton-pipelines"
+      name      = "github-release-pr-cleanup"
+    }
+    spec = {
+      interceptors = [
+        {
+          ref = {
+            kind = "ClusterInterceptor"
+            name = "github"
+          }
+          params = [
+            {
+              name = "eventTypes"
+              value = [
+                "pull_request"
+              ]
+            },
+            {
+              name = "secretRef"
+              value = {
+                secretName = "github-webhook"
+                secretKey  = "secretToken"
+              }
+            }
+          ]
+        },
+        {
+          name = "only when image PRs are opened"
+          ref = {
+            kind = "ClusterInterceptor"
+            name = "cel"
+          }
+          params = [
+            {
+              name  = "filter"
+              value = "(requestURL.parseURL().path == \"/github/release\") && (body.action in ['closed'])"
+            }
+          ]
+        }
+      ]
+      bindings = [
+        {
+          kind = "TriggerBinding"
+          ref  = "github-pr"
+        }
+      ]
+      template = {
+        ref = "github-release-pr-cleanup"
       }
     }
   })
@@ -822,16 +887,23 @@ resource "kubectl_manifest" "trigger_template_github_release_pr" {
     spec = {
       params = [
         {
-          name = "github-status-url"
+          name        = "github-status-url"
+          description = "The status URL for the GitHub pull request"
         },
         {
-          name = "pr-number"
+          name        = "pr-number"
+          description = "The GitHub pull request number"
+
         },
         {
-          name = "repo-name"
+          name        = "repo-name"
+          description = "The name of the repo"
+
         },
         {
-          name = "repo-url"
+          name        = "repo-url"
+          description = "The SSH URL of the repo"
+
         }
       ]
       resourcetemplates = [
@@ -863,6 +935,83 @@ resource "kubectl_manifest" "trigger_template_github_release_pr" {
                 name  = "repo-url"
                 value = "$(tt.params.repo-url)"
               }
+            ]
+            workspaces = [
+              {
+                name = "default"
+                volumeClaimTemplate = {
+                  spec = {
+                    accessModes = [
+                      "ReadWriteOnce"
+                    ]
+                    resources = {
+                      requests = {
+                        storage = "512Mi"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  })
+}
+
+resource "kubectl_manifest" "trigger_template_github_release_pr_cleanup" {
+  depends_on = [
+    kubectl_manifest.tekton_triggers,
+    kubectl_manifest.tekton_triggers_interceptors
+  ]
+  yaml_body = yamlencode({
+    apiVersion = "triggers.tekton.dev/v1beta1"
+    kind       = "TriggerTemplate"
+    metadata = {
+      namespace = "tekton-pipelines"
+      name      = "github-release-pr-cleanup"
+    }
+    spec = {
+      params = [
+        {
+          name        = "pr-number"
+          description = "The number of the PR to clean up"
+        },
+        {
+          name        = "repo-name"
+          description = "The name of the repo"
+        },
+        {
+          name        = "repo-url"
+          description = "The SSH URL of the repo"
+        }
+      ]
+      resourcetemplates = [
+        {
+          apiVersion = "tekton.dev/v1beta1"
+          kind       = "PipelineRun"
+          metadata = {
+            generateName = "github-release-pr-cleanup-"
+          }
+          spec = {
+            serviceAccountName = "cicd-bot"
+            pipelineRef = {
+              name = "github-release-pr-cleanup"
+            }
+            params = [
+              {
+                name  = "pr-number"
+                value = "$(tt.params.pr-number)"
+              },
+              {
+                name  = "repo-name"
+                value = "$(tt.params.repo-name)"
+              },
+              {
+                name  = "repo-url"
+                value = "$(tt.params.repo-url)"
+              },
             ]
             workspaces = [
               {
@@ -1348,6 +1497,140 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
   })
 }
 
+resource "kubectl_manifest" "pipeline_github_release_pr_cleanup" {
+  depends_on = [
+    kubectl_manifest.tekton_triggers,
+    kubectl_manifest.tekton_triggers_interceptors
+  ]
+  yaml_body = yamlencode({
+    apiVersion = "tekton.dev/v1beta1"
+    kind       = "Pipeline"
+    metadata = {
+      namespace = "tekton-pipelines"
+      name      = "github-release-pr-cleanup"
+    }
+    spec = {
+      params = [
+        {
+          name        = "pr-number"
+          type        = "string"
+          description = "The number to of the PR to build"
+        },
+        {
+          name        = "repo-name"
+          type        = "string"
+          description = "The name of the repo to build"
+        },
+        {
+          name        = "repo-url"
+          type        = "string"
+          description = "The URL of the repo to build"
+        }
+      ]
+      workspaces = [
+        {
+          name = "default" # Must match the name in the PipelineRun?
+        }
+      ]
+      tasks = [
+        {
+          name = "get-secret-github-token"
+          taskRef = {
+            name = "get-secret"
+          }
+          params = [
+            {
+              name  = "secret-key"
+              value = local.cicd_bot_personal_access_token_key
+            },
+            {
+              name  = "secret-name"
+              value = kubernetes_secret.cicd_bot_personal_access_token.metadata[0].name
+            },
+            {
+              name  = "secret-namespace"
+              value = kubernetes_secret.cicd_bot_personal_access_token.metadata[0].namespace
+            }
+          ]
+        },
+        {
+          runAfter = [
+            "get-secret-github-token"
+          ]
+          name = "github-get-pr-sha"
+          taskRef = {
+            name = "github-get-pr-sha"
+          }
+          params = [
+            {
+              name  = "github-token"
+              value = "$(tasks.get-secret-github-token.results.secret-value)"
+            },
+            {
+              name  = "github-username"
+              value = var.cicd_bot_github_username
+            },
+            {
+              name  = "pr-number"
+              value = "$(params.pr-number)"
+            },
+            {
+              name  = "repo-name"
+              value = "$(params.repo-name)"
+            }
+          ]
+        },
+        {
+          runAfter = [
+            "github-get-pr-sha",
+          ]
+          name = "github-checkout-commit"
+          taskRef = {
+            name = "github-checkout-commit"
+          }
+          params = [
+            {
+              name  = "repo-url"
+              value = "$(params.repo-url)"
+            },
+            {
+              name  = "revision"
+              value = "$(tasks.github-get-pr-sha.results.revision)"
+            }
+          ]
+          workspaces = [
+            {
+              name      = "default" # Must match what the git-clone task expects.
+              workspace = "default" # Must match above
+            }
+          ]
+        },
+        {
+          runAfter = [
+            "github-checkout-commit"
+          ]
+          name = "terragrunt-destroy"
+          workspaces = [
+            {
+              name      = "default"
+              workspace = "default" # Must match above
+            }
+          ]
+          params = [
+            {
+              name  = "pr-number"
+              value = "$(params.pr-number)"
+            }
+          ]
+          taskRef = {
+            name = "terragrunt-destroy"
+          }
+        }
+      ]
+    }
+  })
+}
+
 resource "kubectl_manifest" "pipeline_github_release_push" {
   depends_on = [
     kubectl_manifest.tekton_triggers,
@@ -1734,7 +2017,7 @@ resource "kubectl_manifest" "task_build_and_push_image" {
               value = "$(params.image-tag)"
             }
           ]
-          image      = "gcr.io/kaniko-project/executor:v${var.kaniko_version}"
+          image      = "gcr.io/kaniko-project/executor:${var.kaniko_version}"
           workingDir = "$(workspaces.default.path)"
           args = [
             "--destination=${var.region}-docker.pkg.dev/${var.project}/${google_artifact_registry_repository.iskprinter.name}/$(IMAGE_NAME):$(IMAGE_TAG)",
@@ -1828,7 +2111,7 @@ resource "kubectl_manifest" "task_terragrunt_apply" {
         {
           name        = "pr-number"
           description = "The PR number being built. Used only for PR (preview) builds."
-          default     = null
+          default     = "0"
         }
       ]
       steps = [
@@ -1870,6 +2153,69 @@ resource "kubectl_manifest" "task_terragrunt_apply" {
               terragrunt apply -auto-approve -state=./backup.tfstate --terragrunt-non-interactive --terragrunt-working-dir "./config/$${ENV_NAME}"
               exit 1
             fi
+            EOF
+        }
+      ]
+      workspaces = [
+        {
+          mountPath = "/workspace"
+          name      = "default"
+        }
+      ]
+    }
+  })
+}
+
+resource "kubectl_manifest" "task_terragrunt_destroy" {
+  yaml_body = yamlencode({
+    apiVersion = "tekton.dev/v1beta1"
+    kind       = "Task"
+    metadata = {
+      name      = "terragrunt-destroy"
+      namespace = "tekton-pipelines"
+    }
+    spec = {
+      params = [
+        {
+          name        = "pr-number"
+          description = "The number of the PR that was closed"
+        }
+      ]
+      steps = [
+        {
+          name = "terragrunt-destroy"
+          env = [
+            {
+              name  = "ENV_NAME"
+              value = "preview"
+            },
+            {
+              name  = "PR_NUMBER"
+              value = "$(params.pr-number)"
+            },
+            {
+              name  = "TF_VAR_api_client_credentials_secret_key_id"
+              value = "${var.api_client_credentials_secret_key_id}"
+            },
+            {
+              name  = "TF_VAR_api_client_credentials_secret_key_secret"
+              value = "${var.api_client_credentials_secret_key_secret}"
+            },
+            {
+              name  = "TF_VAR_api_client_credentials_secret_name"
+              value = "${var.api_client_credentials_secret_name}"
+            },
+            {
+              name  = "TF_VAR_api_client_credentials_secret_namespace"
+              value = "${var.api_client_credentials_secret_namespace}"
+            },
+          ]
+          image      = "alpine/terragrunt:${var.terraform_version}"
+          workingDir = "$(workspaces.default.path)"
+          script     = <<-EOF
+            #!/bin/sh
+            set -eux
+            terragrunt destroy -auto-approve --terragrunt-non-interactive --terragrunt-working-dir "./config/$${ENV_NAME}"
             EOF
         }
       ]
