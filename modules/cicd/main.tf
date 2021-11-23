@@ -439,9 +439,6 @@ resource "kubectl_manifest" "event_listener_github" {
           triggerRef = "github-release-pr"
         },
         {
-          triggerRef = "github-release-pr-cleanup"
-        },
-        {
           triggerRef = "github-release-push"
         }
       ]
@@ -1445,25 +1442,15 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
             "report-initial-status",
             "github-checkout-commit"
           ]
-          name = "terragrunt-apply"
+          name = "terragrunt-plan"
           workspaces = [
             {
               name      = "default"
               workspace = "default" # Must match above
             }
           ]
-          params = [
-            {
-              name  = "env-name"
-              value = "preview"
-            },
-            {
-              name  = "pr-number"
-              value = "$(params.pr-number)"
-            }
-          ]
           taskRef = {
-            name = "terragrunt-apply"
+            name = "terragrunt-plan"
           }
         }
       ]
@@ -1490,140 +1477,6 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
           ]
           taskRef = {
             name = "report-status"
-          }
-        }
-      ]
-    }
-  })
-}
-
-resource "kubectl_manifest" "pipeline_github_release_pr_cleanup" {
-  depends_on = [
-    kubectl_manifest.tekton_triggers,
-    kubectl_manifest.tekton_triggers_interceptors
-  ]
-  yaml_body = yamlencode({
-    apiVersion = "tekton.dev/v1beta1"
-    kind       = "Pipeline"
-    metadata = {
-      namespace = "tekton-pipelines"
-      name      = "github-release-pr-cleanup"
-    }
-    spec = {
-      params = [
-        {
-          name        = "pr-number"
-          type        = "string"
-          description = "The number to of the PR to build"
-        },
-        {
-          name        = "repo-name"
-          type        = "string"
-          description = "The name of the repo to build"
-        },
-        {
-          name        = "repo-url"
-          type        = "string"
-          description = "The URL of the repo to build"
-        }
-      ]
-      workspaces = [
-        {
-          name = "default" # Must match the name in the PipelineRun?
-        }
-      ]
-      tasks = [
-        {
-          name = "get-secret-github-token"
-          taskRef = {
-            name = "get-secret"
-          }
-          params = [
-            {
-              name  = "secret-key"
-              value = local.cicd_bot_personal_access_token_key
-            },
-            {
-              name  = "secret-name"
-              value = kubernetes_secret.cicd_bot_personal_access_token.metadata[0].name
-            },
-            {
-              name  = "secret-namespace"
-              value = kubernetes_secret.cicd_bot_personal_access_token.metadata[0].namespace
-            }
-          ]
-        },
-        {
-          runAfter = [
-            "get-secret-github-token"
-          ]
-          name = "github-get-pr-sha"
-          taskRef = {
-            name = "github-get-pr-sha"
-          }
-          params = [
-            {
-              name  = "github-token"
-              value = "$(tasks.get-secret-github-token.results.secret-value)"
-            },
-            {
-              name  = "github-username"
-              value = var.cicd_bot_github_username
-            },
-            {
-              name  = "pr-number"
-              value = "$(params.pr-number)"
-            },
-            {
-              name  = "repo-name"
-              value = "$(params.repo-name)"
-            }
-          ]
-        },
-        {
-          runAfter = [
-            "github-get-pr-sha",
-          ]
-          name = "github-checkout-commit"
-          taskRef = {
-            name = "github-checkout-commit"
-          }
-          params = [
-            {
-              name  = "repo-url"
-              value = "$(params.repo-url)"
-            },
-            {
-              name  = "revision"
-              value = "$(tasks.github-get-pr-sha.results.revision)"
-            }
-          ]
-          workspaces = [
-            {
-              name      = "default" # Must match what the git-clone task expects.
-              workspace = "default" # Must match above
-            }
-          ]
-        },
-        {
-          runAfter = [
-            "github-checkout-commit"
-          ]
-          name = "terragrunt-destroy"
-          workspaces = [
-            {
-              name      = "default"
-              workspace = "default" # Must match above
-            }
-          ]
-          params = [
-            {
-              name  = "pr-number"
-              value = "$(params.pr-number)"
-            }
-          ]
-          taskRef = {
-            name = "terragrunt-destroy"
           }
         }
       ]
@@ -2054,10 +1907,6 @@ resource "kubectl_manifest" "task_terragrunt_plan" {
           name = "terragrunt-plan"
           env = [
             {
-              name  = "ENV_NAME"
-              value = "prod"
-            },
-            {
               name  = "TF_VAR_api_client_credentials_secret_key_id"
               value = "${var.api_client_credentials_secret_key_id}"
             },
@@ -2079,7 +1928,7 @@ resource "kubectl_manifest" "task_terragrunt_plan" {
           script     = <<-EOF
             #!/bin/sh
             set -eux
-            terragrunt plan --terragrunt-working-dir "./config/$${ENV_NAME}"
+            terragrunt plan --terragrunt-working-dir ./config/prod
             EOF
         }
       ]
@@ -2102,31 +1951,11 @@ resource "kubectl_manifest" "task_terragrunt_apply" {
       namespace = "tekton-pipelines"
     }
     spec = {
-      params = [
-        {
-          name        = "env-name"
-          description = "The Terragrunt config directory to use. (prod|preview)"
-          default     = "prod"
-        },
-        {
-          name        = "pr-number"
-          description = "The PR number being built. Used only for PR (preview) builds."
-          default     = "0"
-        }
-      ]
       steps = [
         {
           name = "terragrunt-apply"
           env = [
             {
-              name  = "ENV_NAME"
-              value = "$(params.env-name)"
-            },
-            {
-              name  = "PR_NUMBER"
-              value = "$(params.pr-number)"
-            },
-            {
               name  = "TF_VAR_api_client_credentials_secret_key_id"
               value = "${var.api_client_credentials_secret_key_id}"
             },
@@ -2148,74 +1977,11 @@ resource "kubectl_manifest" "task_terragrunt_apply" {
           script     = <<-EOF
             #!/bin/sh
             set -eux
-            if ! terragrunt apply -auto-approve -backup=./backup.tfstate --terragrunt-non-interactive --terragrunt-working-dir "./config/$${ENV_NAME}"; then
+            if ! terragrunt apply -auto-approve -backup=./backup.tfstate --terragrunt-non-interactive --terragrunt-working-dir ./config/prod; then
               echo 'Reverting to prior state' >2
-              terragrunt apply -auto-approve -state=./backup.tfstate --terragrunt-non-interactive --terragrunt-working-dir "./config/$${ENV_NAME}"
+              terragrunt apply -auto-approve -state=./backup.tfstate --terragrunt-non-interactive --terragrunt-working-dir ./config/prod
               exit 1
             fi
-            EOF
-        }
-      ]
-      workspaces = [
-        {
-          mountPath = "/workspace"
-          name      = "default"
-        }
-      ]
-    }
-  })
-}
-
-resource "kubectl_manifest" "task_terragrunt_destroy" {
-  yaml_body = yamlencode({
-    apiVersion = "tekton.dev/v1beta1"
-    kind       = "Task"
-    metadata = {
-      name      = "terragrunt-destroy"
-      namespace = "tekton-pipelines"
-    }
-    spec = {
-      params = [
-        {
-          name        = "pr-number"
-          description = "The number of the PR that was closed"
-        }
-      ]
-      steps = [
-        {
-          name = "terragrunt-destroy"
-          env = [
-            {
-              name  = "ENV_NAME"
-              value = "preview"
-            },
-            {
-              name  = "PR_NUMBER"
-              value = "$(params.pr-number)"
-            },
-            {
-              name  = "TF_VAR_api_client_credentials_secret_key_id"
-              value = "${var.api_client_credentials_secret_key_id}"
-            },
-            {
-              name  = "TF_VAR_api_client_credentials_secret_key_secret"
-              value = "${var.api_client_credentials_secret_key_secret}"
-            },
-            {
-              name  = "TF_VAR_api_client_credentials_secret_name"
-              value = "${var.api_client_credentials_secret_name}"
-            },
-            {
-              name  = "TF_VAR_api_client_credentials_secret_namespace"
-              value = "${var.api_client_credentials_secret_namespace}"
-            },
-          ]
-          image      = "alpine/terragrunt:${var.terraform_version}"
-          workingDir = "$(workspaces.default.path)"
-          script     = <<-EOF
-            #!/bin/sh
-            set -eux
-            terragrunt destroy -auto-approve --terragrunt-non-interactive --terragrunt-working-dir "./config/$${ENV_NAME}"
             EOF
         }
       ]
