@@ -60,10 +60,6 @@ module "secrets" {
   project                               = var.project
 }
 
-module "operator_mongodb" {
-  source = "./modules/operator_mongodb"
-}
-
 module "cicd" {
   source                                   = "./modules/cicd/"
   alpine_k8s_version                       = var.alpine_k8s_version

@@ -24,57 +24,9 @@ resource "google_container_cluster" "general_purpose" {
     }
   }
   workload_identity_config {
-    identity_namespace = "${var.project}.svc.id.goog"
+    workload_pool = "${var.project}.svc.id.goog"
   }
 }
-
-# resource "google_container_node_pool" "pool_2gb" {
-#   project            = var.project
-#   name               = "pool-2gb"
-#   location           = var.location
-#   cluster            = google_container_cluster.general_purpose.name
-#   initial_node_count = 1
-#   autoscaling {
-#     min_node_count = var.min_node_2gb_count
-#     max_node_count = var.max_node_2gb_count
-#   }
-#   node_config {
-#     preemptible     = true
-#     machine_type    = "e2-small"
-#     disk_size_gb    = 32
-#     service_account = google_service_account.gke.email
-#     oauth_scopes = [
-#       "https://www.googleapis.com/auth/cloud-platform"
-#     ]
-#     workload_metadata_config {
-#       mode = "GKE_METADATA"
-#     }
-#   }
-# }
-
-# resource "google_container_node_pool" "pool_4gb" {
-#   project            = var.project
-#   name               = "pool-4gb"
-#   location           = var.location
-#   cluster            = google_container_cluster.general_purpose.name
-#   initial_node_count = 1
-#   autoscaling {
-#     min_node_count = var.min_node_4gb_count
-#     max_node_count = var.max_node_4gb_count
-#   }
-#   node_config {
-#     preemptible     = true
-#     machine_type    = "e2-medium"
-#     disk_size_gb    = 32
-#     service_account = google_service_account.gke.email
-#     oauth_scopes = [
-#       "https://www.googleapis.com/auth/cloud-platform"
-#     ]
-#     workload_metadata_config {
-#       mode = "GKE_METADATA"
-#     }
-#   }
-# }
 
 resource "google_container_node_pool" "pool_8gb" {
   project            = var.project
