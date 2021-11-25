@@ -1438,11 +1438,63 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
           ]
         },
         {
+          name = "get-secret-api-client-id"
+          taskRef = {
+            name = "get-secret"
+          }
+          params = [
+            {
+              name  = "secret-key"
+              value = "id"
+            },
+            {
+              name  = "secret-name"
+              value = "api-client-credentials"
+            },
+            {
+              name  = "secret-namespace"
+              value = "secrets"
+            }
+          ]
+        },
+        {
+          name = "get-secret-api-client-secret"
+          taskRef = {
+            name = "get-secret"
+          }
+          params = [
+            {
+              name  = "secret-key"
+              value = "secret"
+            },
+            {
+              name  = "secret-name"
+              value = "api-client-credentials"
+            },
+            {
+              name  = "secret-namespace"
+              value = "secrets"
+            }
+          ]
+        },
+        {
           runAfter = [
             "report-initial-status",
-            "github-checkout-commit"
+            "github-checkout-commit",
+            "get-secret-api-client-id",
+            "get-secret-api-client-secret",
           ]
           name = "terragrunt-plan"
+          params = [
+            {
+              name  = "api-client-id"
+              value = "$(tasks.get-secret-api-client-id.results.secret-value)"
+            },
+            {
+              name  = "api-client-secret"
+              value = "$(tasks.get-secret-api-client-secret.results.secret-value)"
+            },
+          ]
           workspaces = [
             {
               name      = "default"
@@ -1538,10 +1590,62 @@ resource "kubectl_manifest" "pipeline_github_release_push" {
           ]
         },
         {
+          name = "get-secret-api-client-id"
+          taskRef = {
+            name = "get-secret"
+          }
+          params = [
+            {
+              name  = "secret-key"
+              value = "id"
+            },
+            {
+              name  = "secret-name"
+              value = "api-client-credentials"
+            },
+            {
+              name  = "secret-namespace"
+              value = "secrets"
+            }
+          ]
+        },
+        {
+          name = "get-secret-api-client-secret"
+          taskRef = {
+            name = "get-secret"
+          }
+          params = [
+            {
+              name  = "secret-key"
+              value = "secret"
+            },
+            {
+              name  = "secret-name"
+              value = "api-client-credentials"
+            },
+            {
+              name  = "secret-namespace"
+              value = "secrets"
+            }
+          ]
+        },
+        {
           runAfter = [
-            "github-checkout-commit"
+            "github-checkout-commit",
+            "get-secret-api-client-id",
+            "get-secret-api-client-secret"
           ]
           name = "terragrunt-apply"
+          params = [
+            {
+              name  = "api-client-id"
+              value = "$(tasks.get-secret-api-client-id.results.secret-value)"
+            },
+            {
+              name  = "api-client-secret"
+              value = "$(tasks.get-secret-api-client-secret.results.secret-value)"
+            },
+          ]
           workspaces = [
             {
               name      = "default"
@@ -1902,10 +2006,30 @@ resource "kubectl_manifest" "task_terragrunt_plan" {
       namespace = "tekton-pipelines"
     }
     spec = {
+      params = [
+        {
+          name        = "api-client-id"
+          description = "The client ID of the Eve Application"
+          type        = "string"
+        },
+        {
+          name        = "api-client-secret"
+          description = "The client secret of the Eve Application"
+          type        = "string"
+        }
+      ]
       steps = [
         {
           name = "terragrunt-plan"
           env = [
+            {
+              name  = "TF_VAR_api_client_id"
+              value = "$(params.api-client-id)"
+            },
+            {
+              name  = "TF_VAR_api_client_secret"
+              value = "$(params.api-client-secret)"
+            },
             {
               name  = "TF_VAR_api_client_credentials_secret_key_id"
               value = "${var.api_client_credentials_secret_key_id}"
@@ -1951,10 +2075,30 @@ resource "kubectl_manifest" "task_terragrunt_apply" {
       namespace = "tekton-pipelines"
     }
     spec = {
+      params = [
+        {
+          name        = "api-client-id"
+          description = "The client ID of the Eve Application"
+          type        = "string"
+        },
+        {
+          name        = "api-client-secret"
+          description = "The client secret of the Eve Application"
+          type        = "string"
+        }
+      ]
       steps = [
         {
           name = "terragrunt-apply"
           env = [
+            {
+              name  = "TF_VAR_api_client_id"
+              value = "$(params.api-client-id)"
+            },
+            {
+              name  = "TF_VAR_api_client_secret"
+              value = "$(params.api-client-secret)"
+            },
             {
               name  = "TF_VAR_api_client_credentials_secret_key_id"
               value = "${var.api_client_credentials_secret_key_id}"

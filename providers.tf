@@ -1,13 +1,3 @@
-terraform {
-  required_version = ">= 0.13"
-  required_providers {
-    kubectl = {
-      source  = "gavinbunney/kubectl"
-      version = ">= 1.7.0"
-    }
-  }
-}
-
 provider "google-beta" {}
 
 provider "helm" {
@@ -27,6 +17,7 @@ provider "kubectl" {
   client_certificate     = module.cluster.cluster_client_certificate
   client_key             = module.cluster.cluster_client_key
   cluster_ca_certificate = module.cluster.cluster_ca_certificate
+  load_config_file       = false
 }
 
 provider "kubernetes" {
