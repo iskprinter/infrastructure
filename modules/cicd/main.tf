@@ -128,6 +128,22 @@ resource "google_project_iam_custom_role" "cicd_bot_role" {
   permissions = [
     "artifactregistry.repositories.downloadArtifacts",
     "artifactregistry.repositories.uploadArtifacts",
+    "compute.instanceGroupManagers.get",
+    "container.clusters.get",
+    "container.cronJobs.get",
+    "container.customResourceDefinitions.get",
+    "container.deployments.get",
+    "container.ingresses.get",
+    "container.jobs.get",
+    "container.namespaces.get",
+    "container.persistentVolumeClaims.get",
+    "container.roleBindings.get",
+    "container.roles.get",
+    "container.secrets.get",
+    "container.secrets.list",
+    "container.serviceAccounts.get",
+    "container.services.get",
+    "container.thirdPartyObjects.get",
     "dns.changes.create",
     "dns.changes.get",
     "dns.resourceRecordSets.get",
@@ -165,14 +181,14 @@ resource "kubernetes_secret" "cicd_bot_personal_access_token" {
 }
 
 # Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
-resource "kubernetes_role" "cicd_bot" {
+resource "kubernetes_role" "tekton_triggers" {
   depends_on = [
     kubectl_manifest.tekton_triggers,
     kubectl_manifest.tekton_triggers_interceptors
   ]
   metadata {
     namespace = "tekton-pipelines"
-    name      = "cicd-bot"
+    name      = "tekton-triggers"
   }
   # EventListeners need to be able to fetch all namespaced resources
   rule {
@@ -206,10 +222,10 @@ resource "kubernetes_role" "cicd_bot" {
 }
 
 # Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
-resource "kubernetes_role_binding" "cicd_bot" {
+resource "kubernetes_role_binding" "tekton_triggers" {
   metadata {
-    namespace = kubernetes_role.cicd_bot.metadata[0].namespace
-    name      = "cicd-bot"
+    namespace = kubernetes_role.tekton_triggers.metadata[0].namespace
+    name      = "tekton-triggers"
   }
   subject {
     kind      = "ServiceAccount"
@@ -219,14 +235,14 @@ resource "kubernetes_role_binding" "cicd_bot" {
   role_ref {
     api_group = "rbac.authorization.k8s.io"
     kind      = "Role"
-    name      = kubernetes_role.cicd_bot.metadata[0].name
+    name      = kubernetes_role.tekton_triggers.metadata[0].name
   }
 }
 
-# Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
-resource "kubernetes_cluster_role" "cicd_bot" {
+# Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.1/examples/rbac.yaml
+resource "kubernetes_cluster_role" "tekton_triggers" {
   metadata {
-    name = "cicd-bot"
+    name = "tekton-triggers"
   }
   rule {
     # EventListeners need to be able to fetch any clustertriggerbindings, and clusterinterceptors
@@ -234,83 +250,41 @@ resource "kubernetes_cluster_role" "cicd_bot" {
     resources  = ["clustertriggerbindings", "clusterinterceptors"]
     verbs      = ["get", "list", "watch"]
   }
-  rule {
-    api_groups = [""]
-    resources  = ["configmaps"]
-    verbs      = ["create", "get", "patch", "update", "delete"]
+}
+
+# Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
+resource "kubernetes_cluster_role_binding" "tekton_triggers" {
+  metadata {
+    name = "tekton-triggers"
   }
-  rule {
-    api_groups = [""]
-    resources  = ["namespaces"]
-    verbs      = ["create", "delete", "get"]
+  subject {
+    kind      = "ServiceAccount"
+    namespace = kubernetes_service_account.cicd_bot.metadata[0].namespace
+    name      = kubernetes_service_account.cicd_bot.metadata[0].name
   }
-  rule {
-    api_groups = [""]
-    resources  = ["persistentvolumeclaims"]
-    verbs      = ["get"]
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "ClusterRole"
+    name      = kubernetes_cluster_role.tekton_triggers.metadata[0].name
   }
-  rule {
-    api_groups = [""]
-    resources  = ["serviceaccounts"]
-    verbs      = ["create", "delete", "get"]
+}
+
+resource "kubernetes_cluster_role" "cicd_bot" {
+  metadata {
+    name = "cicd-bot"
   }
+  # EventListeners need to be able to fetch all namespaced resources
   rule {
     api_groups = [""]
     resources  = ["secrets"]
-    verbs      = ["create", "delete", "get", "list"]
-  }
-  rule {
-    api_groups = [""]
-    resources  = ["services"]
-    verbs      = ["create", "get", "patch", "update", "delete"]
-  }
-  rule {
-    api_groups = ["apiextensions.k8s.io"]
-    resources  = ["customresourcedefinitions"]
-    verbs      = ["list"]
-  }
-  rule {
-    api_groups = ["apps"]
-    resources  = ["deployments", "statefulsets"]
-    verbs      = ["create", "get", "patch", "update", "delete"]
-  }
-  rule {
-    api_groups = ["batch"]
-    resources  = ["cronjobs", "jobs"]
-    verbs      = ["create", "get", "patch", "update", "delete"]
-  }
-  rule {
-    api_groups = ["extensions"]
-    resources  = ["ingresses"]
-    verbs      = ["create", "get", "patch", "update", "delete"]
-  }
-  rule {
-    api_groups = ["mongodbcommunity.mongodb.com"]
-    resources  = ["mongodbcommunity"]
-    verbs      = ["create", "delete", "get", "patch"]
-  }
-  rule {
-    api_groups = ["rbac.authorization.k8s.io"]
-    resources  = ["rolebindings"]
-    verbs      = ["create", "delete", "get"]
-  }
-  rule {
-    api_groups = ["rbac.authorization.k8s.io"]
-    resources  = ["roles"]
-    verbs = [
-      "bind",
-      "create",
-      "delete",
-      "escalate",
-      "get"
-    ]
+    verbs      = ["get"]
   }
 }
 
 # Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
 resource "kubernetes_cluster_role_binding" "cicd_bot" {
   metadata {
-    name = "cicd-bot"
+    name      = "cicd-bot"
   }
   subject {
     kind      = "ServiceAccount"
@@ -1771,8 +1745,8 @@ resource "kubectl_manifest" "task_get_secret" {
             }
           ]
           script = <<-EOF
-            #!/bin/sh
-            set -eux
+            #!/bin/bash
+            set -euxo pipefail
             secret_value=$(
                 kubectl get secret "$SECRET_NAME" \
                     -n "$SECRET_NAMESPACE" \
