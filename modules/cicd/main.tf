@@ -193,12 +193,6 @@ resource "google_project_iam_custom_role" "cicd_bot_role" {
   ]
 }
 
-resource "google_service_account_iam_member" "cicd_bot_role_binding" {
-  service_account_id = google_service_account.cicd_bot.name
-  role               = google_project_iam_custom_role.cicd_bot_role.name
-  member             = "serviceAccount:${google_service_account.cicd_bot.email}"
-}
-
 resource "google_project_iam_member" "cicd_bot_storage_admin_binding" {
   project = var.project
   role    = google_project_iam_custom_role.cicd_bot_role.name
