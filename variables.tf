@@ -144,7 +144,7 @@ variable "terraform_version" {
 
 variable "cert_manager_version" {
   type    = string
-  default = "1.6.0"
+  default = "1.6.1"
 }
 
 # Iskprinter Namespace
