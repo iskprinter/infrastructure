@@ -366,6 +366,7 @@ resource "kubernetes_ingress" "tekton_triggers_ingress" {
     name      = "tekton-triggers-ingress"
     namespace = "tekton-pipelines"
     annotations = {
+      "cert-manager.io/cluster-issuer"           = "lets-encrypt-prod"
       "kubernetes.io/ingress.class"              = "nginx"
       "nginx.ingress.kubernetes.io/ssl-redirect" = "true"
     }
@@ -390,28 +391,6 @@ resource "kubernetes_ingress" "tekton_triggers_ingress" {
       secret_name = "tls-triggers-tekton-iskprinter-com"
     }
   }
-}
-
-resource "kubectl_manifest" "certificate_triggers_tekton_iskprinter_com" {
-  yaml_body = yamlencode({
-    apiVersion = "cert-manager.io/v1"
-    kind       = "Certificate"
-    metadata = {
-      name      = "certificate-triggers-tekton-iskprinter-com"
-      namespace = "tekton-pipelines"
-    }
-    spec = {
-      secretName = "tls-triggers-tekton-iskprinter-com"
-      issuerRef = {
-        # The issuer created previously
-        kind = "ClusterIssuer"
-        name = "lets-encrypt-prod"
-      }
-      dnsNames = [
-        "triggers.tekton.iskprinter.com"
-      ]
-    }
-  })
 }
 
 # Event Listeners
