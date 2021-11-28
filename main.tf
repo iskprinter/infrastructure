@@ -82,3 +82,8 @@ module "cicd" {
   tekton_triggers_version                  = var.tekton_triggers_version
   terraform_version                        = var.terraform_version
 }
+
+module "developers" {
+  source      = "./modules/developers"
+  gcp_project = var.project
+}
