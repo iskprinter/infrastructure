@@ -2,10 +2,6 @@ variable "project" {
   type = string
 }
 
-variable "access_token" {
-  type = string
-}
-
 variable "location" {
   type = string
 }
