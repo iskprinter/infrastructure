@@ -21,4 +21,7 @@ locals {
   min_node_8gb_count                    = 1
   max_node_8gb_count                    = 3
   cert_manager_gcp_service_account_name = "cert-manager"
+  tekton_pipeline_version               = "0.30.0"
+  tekton_triggers_version               = "0.17.1"
+  tekton_dashboard_version              = "0.22.0"
 }
