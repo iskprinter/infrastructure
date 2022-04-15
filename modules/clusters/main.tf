@@ -13,7 +13,7 @@ resource "google_project_iam_member" "gke_artifact_registry_reader_binding" {
 
 resource "google_container_cluster" "general_purpose" {
   project                  = var.project
-  name                     = "general-purpose-cluster"
+  name                     = var.cluster_name
   location                 = var.location
   remove_default_node_pool = true
   initial_node_count       = 1 # For default pool, which gets removed
@@ -32,7 +32,7 @@ resource "google_container_node_pool" "pool_8gb" {
   project            = var.project
   name               = "pool-8gb"
   location           = var.location
-  cluster            = google_container_cluster.general_purpose.name
+  cluster            = var.cluster_name
   initial_node_count = 1
   autoscaling {
     min_node_count = var.min_node_8gb_count

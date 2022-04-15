@@ -1,5 +1,5 @@
 .idea/
 .terraform/
-*.tfstate
-*.tfstate*
-**/.DS_Store
+.terragrunt-cache/
+terragrunt_generated*
+.DS_Store
