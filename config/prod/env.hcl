@@ -24,4 +24,5 @@ locals {
   tekton_pipeline_version               = "0.30.0"
   tekton_triggers_version               = "0.17.1"
   tekton_dashboard_version              = "0.22.0"
+  ingress_nginx_version                 = "4.0.6"  # The helm chart version
 }
