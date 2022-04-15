@@ -1,3 +1,5 @@
+
+
 include "global" {
   path           = "../../global.hcl"
   merge_strategy = "deep"
@@ -15,11 +17,19 @@ generate "providers" {
   if_exists = "overwrite_terragrunt"
   contents = <<-EOF
 
-    provider "helm" {
-      kubernetes {
+    terraform {
+      required_version = ">= 0.13"
+      required_providers {
+        kubectl = {
+          source  = "gavinbunney/kubectl"
+          version = ">= 1.7.0"
+        }
+      }
+    }
+
+    provider "kubectl" {
       config_path = "~/.kube/config"
       config_context = "minikube"
-      }
     }
 
   EOF
@@ -33,7 +43,6 @@ generate "modules" {
 
     module "${basename(path_relative_to_include("env"))}" {
       source               = "../../../modules/${basename(path_relative_to_include("env"))}"
-      cert_manager_version = "${include.global.locals.cert_manager_version}"
       kubernetes_provider  = "${include.env.locals.kubernetes_provider}"
     }
 

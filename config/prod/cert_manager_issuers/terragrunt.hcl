@@ -44,15 +44,6 @@ generate "providers" {
       load_config_file       = false
     }
 
-    provider "kubernetes" {
-      host                   = "https://$${data.google_container_cluster.general_purpose.endpoint}"
-      token                  = data.google_client_config.provider.access_token
-      cluster_ca_certificate = base64decode(data.google_container_cluster.general_purpose.master_auth[0].cluster_ca_certificate)
-      experiments {
-        manifest_resource = true
-      }
-    }
-
   EOF
 
 }
@@ -63,7 +54,9 @@ generate "modules" {
   contents = <<-EOF
 
     module "${basename(path_relative_to_include("env"))}" {
-      source = "../../../modules/${basename(path_relative_to_include("env"))}"
+      source  = "../../../modules/${basename(path_relative_to_include("env"))}"
+      kubernetes_provider  = "${include.env.locals.kubernetes_provider}"
+      project = "${include.env.locals.project}"
     }
 
   EOF
