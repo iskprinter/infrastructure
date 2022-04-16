@@ -1,23 +1,23 @@
 locals {
-  developers = [
+  user_accounts = [
     {
-      account_id   = "cameronhudson"
-      display_name = "Cameron Hudson"
+      account_id   = "minikube-image-puller"
+      display_name = "Minikube Image Puller"
     }
   ]
 }
 
 resource "google_service_account" "service_account" {
-  for_each     = { for i, dev in local.developers : dev.account_id => dev }
+  for_each     = { for i, dev in local.user_accounts : account.account_id => account }
   project      = var.project
   account_id   = each.value.account_id
   display_name = each.value.display_name
 }
 
-resource "google_project_iam_custom_role" "developer_role" {
+resource "google_project_iam_custom_role" "container_image_reader_role" {
   project = var.project
-  role_id = "developer"
-  title   = "Developer"
+  role_id = "container_image_reader"
+  title   = "Container Image Reader"
   permissions = [
     "artifactregistry.repositories.downloadArtifacts"
   ]
@@ -26,6 +26,6 @@ resource "google_project_iam_custom_role" "developer_role" {
 resource "google_project_iam_member" "developer_role" {
   for_each = google_service_account.service_account
   project  = var.project
-  role     = google_project_iam_custom_role.developer_role.name
+  role     = google_project_iam_custom_role.container_image_reader_role.name
   member   = "serviceAccount:${each.value.email}"
 }
