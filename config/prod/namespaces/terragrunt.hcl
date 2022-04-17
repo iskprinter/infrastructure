@@ -1,3 +1,7 @@
+dependencies {
+  paths = ["../clusters"]
+}
+
 include "global" {
   path           = "../../global.hcl"
   merge_strategy = "deep"
@@ -15,24 +19,21 @@ generate "providers" {
   if_exists = "overwrite_terragrunt"
   contents = <<-EOF
 
-    terraform {
-      required_version = ">= 0.13"
-      required_providers {
-        kubectl = {
-          source  = "gavinbunney/kubectl"
-          version = ">= 1.7.0"
-        }
-      }
-    }
+    data "google_client_config" "provider" {}
 
-    provider "kubectl" {
-      config_path = "~/.kube/config"
-      config_context = "minikube"
+    data "google_container_cluster" "general_purpose" {
+      project  = "${include.env.locals.project}"
+      location = "${include.global.locals.region}-a"
+      name     = "${include.env.locals.cluster_name}"
     }
 
     provider "kubernetes" {
-      config_path = "~/.kube/config"
-      config_context = "minikube"
+      host                   = "https://$${data.google_container_cluster.general_purpose.endpoint}"
+      token                  = data.google_client_config.provider.access_token
+      cluster_ca_certificate = base64decode(data.google_container_cluster.general_purpose.master_auth[0].cluster_ca_certificate)
+      experiments {
+        manifest_resource = true
+      }
     }
 
   EOF

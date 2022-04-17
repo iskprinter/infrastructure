@@ -1,3 +1,7 @@
+dependencies {
+  paths = ["../namespaces"]
+}
+
 include "global" {
   path           = "../../global.hcl"
   merge_strategy = "deep"
@@ -30,11 +34,6 @@ generate "providers" {
       config_context = "minikube"
     }
 
-    provider "kubernetes" {
-      config_path = "~/.kube/config"
-      config_context = "minikube"
-    }
-
   EOF
 
 }
@@ -45,7 +44,8 @@ generate "modules" {
   contents = <<-EOF
 
     module "${basename(path_relative_to_include("env"))}" {
-      source = "../../../modules/${basename(path_relative_to_include("env"))}"
+      source   = "../../../modules/${basename(path_relative_to_include("env"))}"
+      env_name = "${include.env.locals.env_name}"
     }
 
   EOF

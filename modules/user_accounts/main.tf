@@ -8,7 +8,7 @@ locals {
 }
 
 resource "google_service_account" "service_account" {
-  for_each     = { for i, dev in local.user_accounts : account.account_id => account }
+  for_each     = { for i, account in local.user_accounts : account.account_id => account }
   project      = var.project
   account_id   = each.value.account_id
   display_name = each.value.display_name

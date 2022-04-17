@@ -1,5 +1,8 @@
 dependencies {
-  paths = ["../clusters"]
+  paths = [
+    "../clusters",
+    "../namespaces",
+  ]
 }
 
 include "global" {
@@ -54,9 +57,8 @@ generate "modules" {
   contents = <<-EOF
 
     module "${basename(path_relative_to_include("env"))}" {
-      source  = "../../../modules/${basename(path_relative_to_include("env"))}"
-      kubernetes_provider  = "${include.env.locals.kubernetes_provider}"
-      project = "${include.env.locals.project}"
+      source   = "../../../modules/${basename(path_relative_to_include("env"))}"
+      env_name = "${include.env.locals.env_name}"
     }
 
   EOF
