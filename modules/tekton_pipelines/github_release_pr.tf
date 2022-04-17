@@ -1,11 +1,7 @@
 # Triggers
 
 resource "kubectl_manifest" "trigger_github_release_pr" {
-  depends_on = [
-    kubectl_manifest.tekton_triggers,
-    kubectl_manifest.tekton_triggers_interceptors
-  ]
-  yaml_body = yamlencode({
+    yaml_body = yamlencode({
     apiVersion = "triggers.tekton.dev/v1beta1"
     kind       = "Trigger"
     metadata = {
@@ -63,11 +59,7 @@ resource "kubectl_manifest" "trigger_github_release_pr" {
 }
 
 resource "kubectl_manifest" "trigger_github_release_pr_cleanup" {
-  depends_on = [
-    kubectl_manifest.tekton_triggers,
-    kubectl_manifest.tekton_triggers_interceptors
-  ]
-  yaml_body = yamlencode({
+    yaml_body = yamlencode({
     apiVersion = "triggers.tekton.dev/v1beta1"
     kind       = "Trigger"
     metadata = {
@@ -127,11 +119,7 @@ resource "kubectl_manifest" "trigger_github_release_pr_cleanup" {
 # TriggerTemplates
 
 resource "kubectl_manifest" "trigger_template_github_release_pr" {
-  depends_on = [
-    kubectl_manifest.tekton_triggers,
-    kubectl_manifest.tekton_triggers_interceptors
-  ]
-  yaml_body = yamlencode({
+    yaml_body = yamlencode({
     apiVersion = "triggers.tekton.dev/v1beta1"
     kind       = "TriggerTemplate"
     metadata = {
@@ -215,11 +203,7 @@ resource "kubectl_manifest" "trigger_template_github_release_pr" {
 }
 
 resource "kubectl_manifest" "trigger_template_github_release_pr_cleanup" {
-  depends_on = [
-    kubectl_manifest.tekton_triggers,
-    kubectl_manifest.tekton_triggers_interceptors
-  ]
-  yaml_body = yamlencode({
+    yaml_body = yamlencode({
     apiVersion = "triggers.tekton.dev/v1beta1"
     kind       = "TriggerTemplate"
     metadata = {
@@ -294,11 +278,7 @@ resource "kubectl_manifest" "trigger_template_github_release_pr_cleanup" {
 # Pipelines
 
 resource "kubectl_manifest" "pipeline_github_release_pr" {
-  depends_on = [
-    kubectl_manifest.tekton_triggers,
-    kubectl_manifest.tekton_triggers_interceptors
-  ]
-  yaml_body = yamlencode({
+    yaml_body = yamlencode({
     apiVersion = "tekton.dev/v1beta1"
     kind       = "Pipeline"
     metadata = {
@@ -346,11 +326,11 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
             },
             {
               name  = "secret-name"
-              value = kubernetes_secret.cicd_bot_personal_access_token.metadata[0].name
+              value = "cicd-bot-personal-access-token"
             },
             {
               name  = "secret-namespace"
-              value = kubernetes_secret.cicd_bot_personal_access_token.metadata[0].namespace
+              value = "tekton-pipelines"
             }
           ]
         },
@@ -370,7 +350,7 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
             },
             {
               name  = "github-username"
-              value = var.cicd_bot_github_username
+              value = "IskprinterGitBot"
             },
             {
               name  = "tekton-pipeline-status"
@@ -393,7 +373,7 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
             },
             {
               name  = "github-username"
-              value = var.cicd_bot_github_username
+              value = "IskprinterGitBot"
             },
             {
               name  = "pr-number"
@@ -431,63 +411,11 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
           ]
         },
         {
-          name = "get-secret-api-client-id"
-          taskRef = {
-            name = "get-secret"
-          }
-          params = [
-            {
-              name  = "secret-key"
-              value = "id"
-            },
-            {
-              name  = "secret-name"
-              value = "api-client-credentials"
-            },
-            {
-              name  = "secret-namespace"
-              value = "secrets"
-            }
-          ]
-        },
-        {
-          name = "get-secret-api-client-secret"
-          taskRef = {
-            name = "get-secret"
-          }
-          params = [
-            {
-              name  = "secret-key"
-              value = "secret"
-            },
-            {
-              name  = "secret-name"
-              value = "api-client-credentials"
-            },
-            {
-              name  = "secret-namespace"
-              value = "secrets"
-            }
-          ]
-        },
-        {
           runAfter = [
             "report-initial-status",
             "github-checkout-commit",
-            "get-secret-api-client-id",
-            "get-secret-api-client-secret",
           ]
           name = "terragrunt-plan"
-          params = [
-            {
-              name  = "api-client-id"
-              value = "$(tasks.get-secret-api-client-id.results.secret-value)"
-            },
-            {
-              name  = "api-client-secret"
-              value = "$(tasks.get-secret-api-client-secret.results.secret-value)"
-            },
-          ]
           workspaces = [
             {
               name      = "default"
@@ -513,7 +441,7 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
             },
             {
               name  = "github-username"
-              value = var.cicd_bot_github_username
+              value = "IskprinterGitBot"
             },
             {
               name  = "tekton-pipeline-status"

@@ -309,10 +309,10 @@ resource "kubectl_manifest" "task_build_and_push_image" {
               value = "$(params.image-tag)"
             }
           ]
-          image      = "gcr.io/kaniko-project/executor:${var.kaniko_version}"
+          image      = "gcr.io/kaniko-project/executor:v${var.kaniko_version}"
           workingDir = "$(workspaces.default.path)"
           args = [
-            "--destination=${var.region}-docker.pkg.dev/${var.project}/${google_artifact_registry_repository.iskprinter.name}/$(IMAGE_NAME):$(IMAGE_TAG)",
+            "--destination=${var.region}-docker.pkg.dev/${var.project}/iskprinter/$(IMAGE_NAME):$(IMAGE_TAG)",
             "--cache=true"
           ]
           resources = {
@@ -341,47 +341,9 @@ resource "kubectl_manifest" "task_terragrunt_plan" {
       namespace = "tekton-pipelines"
     }
     spec = {
-      params = [
-        {
-          name        = "api-client-id"
-          description = "The client ID of the Eve Application"
-          type        = "string"
-        },
-        {
-          name        = "api-client-secret"
-          description = "The client secret of the Eve Application"
-          type        = "string"
-        }
-      ]
       steps = [
         {
-          name = "terragrunt-plan"
-          env = [
-            {
-              name  = "TF_VAR_api_client_id"
-              value = "$(params.api-client-id)"
-            },
-            {
-              name  = "TF_VAR_api_client_secret"
-              value = "$(params.api-client-secret)"
-            },
-            {
-              name  = "TF_VAR_api_client_credentials_secret_key_id"
-              value = "${var.api_client_credentials_secret_key_id}"
-            },
-            {
-              name  = "TF_VAR_api_client_credentials_secret_key_secret"
-              value = "${var.api_client_credentials_secret_key_secret}"
-            },
-            {
-              name  = "TF_VAR_api_client_credentials_secret_name"
-              value = "${var.api_client_credentials_secret_name}"
-            },
-            {
-              name  = "TF_VAR_api_client_credentials_secret_namespace"
-              value = "${var.api_client_credentials_secret_namespace}"
-            },
-          ]
+          name       = "terragrunt-plan"
           image      = "alpine/terragrunt:${var.terraform_version}"
           workingDir = "$(workspaces.default.path)"
           script     = <<-EOF
@@ -410,47 +372,9 @@ resource "kubectl_manifest" "task_terragrunt_apply" {
       namespace = "tekton-pipelines"
     }
     spec = {
-      params = [
-        {
-          name        = "api-client-id"
-          description = "The client ID of the Eve Application"
-          type        = "string"
-        },
-        {
-          name        = "api-client-secret"
-          description = "The client secret of the Eve Application"
-          type        = "string"
-        }
-      ]
       steps = [
         {
           name = "terragrunt-apply"
-          env = [
-            {
-              name  = "TF_VAR_api_client_id"
-              value = "$(params.api-client-id)"
-            },
-            {
-              name  = "TF_VAR_api_client_secret"
-              value = "$(params.api-client-secret)"
-            },
-            {
-              name  = "TF_VAR_api_client_credentials_secret_key_id"
-              value = "${var.api_client_credentials_secret_key_id}"
-            },
-            {
-              name  = "TF_VAR_api_client_credentials_secret_key_secret"
-              value = "${var.api_client_credentials_secret_key_secret}"
-            },
-            {
-              name  = "TF_VAR_api_client_credentials_secret_name"
-              value = "${var.api_client_credentials_secret_name}"
-            },
-            {
-              name  = "TF_VAR_api_client_credentials_secret_namespace"
-              value = "${var.api_client_credentials_secret_namespace}"
-            },
-          ]
           image      = "alpine/terragrunt:${var.terraform_version}"
           workingDir = "$(workspaces.default.path)"
           script     = <<-EOF

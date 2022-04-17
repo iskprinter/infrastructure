@@ -26,4 +26,7 @@ locals {
   ingress_nginx_version                 = "4.0.6"  # The helm chart version
   external_dns_version                  = "0.7.6"  # The helm chart version
   hashicorp_vault_version               = "0.19.0" # The helm chart version
+  terraform_version                     = "1.0.11"
+  kaniko_version                        = "1.7.0"
+  alpine_k8s_version                    = "1.20.7"
 }

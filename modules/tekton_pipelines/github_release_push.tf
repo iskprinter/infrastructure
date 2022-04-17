@@ -1,10 +1,6 @@
 # Triggers
 
 resource "kubectl_manifest" "trigger_github_release_push" {
-  depends_on = [
-    kubectl_manifest.tekton_triggers,
-    kubectl_manifest.tekton_triggers_interceptors
-  ]
   yaml_body = yamlencode({
     apiVersion = "triggers.tekton.dev/v1beta1"
     kind       = "Trigger"
@@ -65,10 +61,6 @@ resource "kubectl_manifest" "trigger_github_release_push" {
 # TriggerTemplates
 
 resource "kubectl_manifest" "trigger_template_github_release_push" {
-  depends_on = [
-    kubectl_manifest.tekton_triggers,
-    kubectl_manifest.tekton_triggers_interceptors
-  ]
   yaml_body = yamlencode({
     apiVersion = "triggers.tekton.dev/v1beta1"
     kind       = "TriggerTemplate"
@@ -134,10 +126,6 @@ resource "kubectl_manifest" "trigger_template_github_release_push" {
 # Pipelines
 
 resource "kubectl_manifest" "pipeline_github_release_push" {
-  depends_on = [
-    kubectl_manifest.tekton_triggers,
-    kubectl_manifest.tekton_triggers_interceptors
-  ]
   yaml_body = yamlencode({
     apiVersion = "tekton.dev/v1beta1"
     kind       = "Pipeline"
@@ -187,62 +175,10 @@ resource "kubectl_manifest" "pipeline_github_release_push" {
           ]
         },
         {
-          name = "get-secret-api-client-id"
-          taskRef = {
-            name = "get-secret"
-          }
-          params = [
-            {
-              name  = "secret-key"
-              value = "id"
-            },
-            {
-              name  = "secret-name"
-              value = "api-client-credentials"
-            },
-            {
-              name  = "secret-namespace"
-              value = "secrets"
-            }
-          ]
-        },
-        {
-          name = "get-secret-api-client-secret"
-          taskRef = {
-            name = "get-secret"
-          }
-          params = [
-            {
-              name  = "secret-key"
-              value = "secret"
-            },
-            {
-              name  = "secret-name"
-              value = "api-client-credentials"
-            },
-            {
-              name  = "secret-namespace"
-              value = "secrets"
-            }
-          ]
-        },
-        {
           runAfter = [
-            "github-checkout-commit",
-            "get-secret-api-client-id",
-            "get-secret-api-client-secret"
+            "github-checkout-commit"
           ]
           name = "terragrunt-apply"
-          params = [
-            {
-              name  = "api-client-id"
-              value = "$(tasks.get-secret-api-client-id.results.secret-value)"
-            },
-            {
-              name  = "api-client-secret"
-              value = "$(tasks.get-secret-api-client-secret.results.secret-value)"
-            },
-          ]
           workspaces = [
             {
               name      = "default"

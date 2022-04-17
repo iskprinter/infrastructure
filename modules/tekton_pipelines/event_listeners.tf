@@ -36,10 +36,6 @@ resource "kubernetes_ingress" "tekton_triggers_ingress" {
 
 # Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/v1beta1/github/github-eventlistener-interceptor.yaml
 resource "kubectl_manifest" "event_listener_github" {
-  depends_on = [
-    kubectl_manifest.tekton_triggers,
-    kubectl_manifest.tekton_triggers_interceptors
-  ]
   yaml_body = yamlencode({
     apiVersion = "triggers.tekton.dev/v1beta1"
     kind       = "EventListener"

@@ -1,11 +1,7 @@
 # Triggers
 
 resource "kubectl_manifest" "trigger_github_image_pr" {
-  depends_on = [
-    kubectl_manifest.tekton_triggers,
-    kubectl_manifest.tekton_triggers_interceptors
-  ]
-  yaml_body = yamlencode({
+    yaml_body = yamlencode({
     apiVersion = "triggers.tekton.dev/v1beta1"
     kind       = "Trigger"
     metadata = {
@@ -65,11 +61,7 @@ resource "kubectl_manifest" "trigger_github_image_pr" {
 # TriggerTemplates
 
 resource "kubectl_manifest" "trigger_template_github_image_pr" {
-  depends_on = [
-    kubectl_manifest.tekton_triggers,
-    kubectl_manifest.tekton_triggers_interceptors
-  ]
-  yaml_body = yamlencode({
+    yaml_body = yamlencode({
     apiVersion = "triggers.tekton.dev/v1beta1"
     kind       = "TriggerTemplate"
     metadata = {
@@ -148,11 +140,7 @@ resource "kubectl_manifest" "trigger_template_github_image_pr" {
 # Pipelines
 
 resource "kubectl_manifest" "pipeline_github_image_pr" {
-  depends_on = [
-    kubectl_manifest.tekton_triggers,
-    kubectl_manifest.tekton_triggers_interceptors
-  ]
-  yaml_body = yamlencode({
+    yaml_body = yamlencode({
     apiVersion = "tekton.dev/v1beta1"
     kind       = "Pipeline"
     metadata = {
@@ -200,11 +188,11 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
             },
             {
               name  = "secret-name"
-              value = kubernetes_secret.cicd_bot_personal_access_token.metadata[0].name
+              value = "cicd-bot-personal-access-token"
             },
             {
               name  = "secret-namespace"
-              value = kubernetes_secret.cicd_bot_personal_access_token.metadata[0].namespace
+              value = "tekton-pipelines"
             }
           ]
         },
@@ -227,7 +215,7 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
             },
             {
               name  = "github-username"
-              value = var.cicd_bot_github_username
+              value = "IskprinterGitBot"
             },
             {
               name  = "tekton-pipeline-status"
@@ -250,7 +238,7 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
             },
             {
               name  = "github-username"
-              value = var.cicd_bot_github_username
+              value = "IskprinterGitBot"
             },
             {
               name  = "pr-number"
@@ -328,7 +316,7 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
             },
             {
               name  = "github-username"
-              value = var.cicd_bot_github_username
+              value = "IskprinterGitBot"
             },
             {
               name  = "tekton-pipeline-status"

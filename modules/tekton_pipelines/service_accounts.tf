@@ -103,11 +103,7 @@ resource "google_project_iam_member" "cicd_bot_storage_admin_binding" {
 
 # Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
 resource "kubernetes_role" "tekton_triggers" {
-  depends_on = [
-    kubectl_manifest.tekton_triggers,
-    kubectl_manifest.tekton_triggers_interceptors
-  ]
-  metadata {
+    metadata {
     namespace = "tekton-pipelines"
     name      = "tekton-triggers"
   }
