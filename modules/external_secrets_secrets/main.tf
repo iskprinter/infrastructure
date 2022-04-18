@@ -21,6 +21,13 @@ resource "kubectl_manifest" "api_client_credentials" {
           remoteRef = {
             key      = "secret/${var.env_name}/api-client-credentials"
             property = "id"
+          },
+        },
+        {
+          secretKey = "secret"
+          remoteRef = {
+            key      = "secret/${var.env_name}/api-client-credentials"
+            property = "secret"
           }
         }
       ]
