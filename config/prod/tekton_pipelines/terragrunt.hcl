@@ -68,7 +68,7 @@ generate "modules" {
       region             = "${include.global.locals.region}"
       terraform_version  = "${include.env.locals.terraform_version}"
       kaniko_version     = "${include.env.locals.kaniko_version}"
-      alpine_k8s_version = "${include.env.locals.kaniko_version}"
+      alpine_k8s_version = "${include.env.locals.alpine_k8s_version}"
     }
 
   EOF
