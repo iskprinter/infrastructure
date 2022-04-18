@@ -1,5 +1,8 @@
 dependencies {
-  paths = ["../clusters"]
+  paths = [
+    "../clusters",
+    "../cert_manager_crds"
+  ]
 }
 
 include "global" {
