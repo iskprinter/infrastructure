@@ -1,5 +1,8 @@
 dependencies {
-  paths = ["../namespaces"]
+  paths = [
+    "../namespaces",
+    "../external_secrets_crds"
+  ]
 }
 
 include "global" {

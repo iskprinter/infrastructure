@@ -1,4 +1,6 @@
-
+dependencies {
+  paths = ["../cert_manager_crds"]
+}
 
 include "global" {
   path           = "../../global.hcl"

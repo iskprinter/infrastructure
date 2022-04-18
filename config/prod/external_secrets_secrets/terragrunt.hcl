@@ -2,6 +2,7 @@ dependencies {
   paths = [
     "../clusters",
     "../namespaces",
+    "../external_secrets_crds"
   ]
 }
 
