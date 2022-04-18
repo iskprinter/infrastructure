@@ -302,13 +302,6 @@ Deploys a Kubernetes cluster and supporting resources
             secret=<client-secret>
         ```
 
-    1. Add an SSH private key and known_hosts content so that the CICD bot can pull code.
-        ```
-        vault kv put secret/prod/cicd-bot-ssh-key \
-            ssh-privatekey="$(cat ~/.ssh/IskprinterGitBot.id_rsa)" \
-            known_hosts="$(cat ~/.ssh/known_hosts | grep github.com)"
-        ```
-
     1. Add a personal access token so the CICD bot can update the Github build status.
         ```
         vault kv put secret/prod/cicd-bot-personal-access-token \
@@ -322,13 +315,28 @@ Deploys a Kubernetes cluster and supporting resources
             secret=<github-webhook-secret>
         ```
 
+1. Add an SSH private key and known_hosts content so that the CICD bot can pull code. (You will have to deindent the following code block if you are viewing this file in a text editor.)
+    ```
+    cat <<EOF | kubectl --context gcp apply -f -
+    apiVersion: v1
+    kind: Secret
+    type: kubernetes.io/ssh-auth
+    metadata:
+      namespace: tekton-pipelines
+      name: cicd-bot-ssh-key
+      annotations:
+        "tekton.dev/git-0": "github.com"
+    data: 
+      ssh-privatekey: $(cat ~/.ssh/IskprinterGitBot.id_rsa | base64)
+      known_hosts: $(ssh-keyscan github.com | base64)
+    EOF
+    ```
+
 1. Create a `docker-registry` secret to allow image pulling from GCP Artifact Registry.
     ```
     gcloud iam service-accounts keys create \
             /tmp/minikube-image-puller-key.json \
             --iam-account=minikube-image-puller@cameronhudson8.iam.gserviceaccount.com
-    kubectl create namespace iskprinter \
-        --context minikube
     kubectl create secret docker-registry image-pull-secret \
         --context minikube \
         -n iskprinter \

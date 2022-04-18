@@ -36,48 +36,6 @@ resource "kubectl_manifest" "api_client_credentials" {
   })
 }
 
-resource "kubectl_manifest" "cicd_bot_ssh_key" {
-  count = var.env_name == "prod" ? 1 : 0
-  yaml_body = yamlencode({
-    apiVersion = "external-secrets.io/v1alpha1"
-    kind       = "ExternalSecret"
-    type       = "Opaque"
-    metadata = {
-      namespace = "tekton-pipelines"
-      name      = "cicd-bot-ssh-key"
-      annotations = {
-        "tekton.dev/git-0" = "github.com"
-      }
-    }
-    spec = {
-      secretStoreRef = {
-        name = "hashicorp-vault-kv"
-        kind = "ClusterSecretStore"
-      }
-      target = {
-        name = "cicd-bot-ssh-key"
-      }
-      data = [
-        {
-          secretKey = "ssh-privatekey"
-          remoteRef = {
-            key      = "secret/${var.env_name}/cicd-bot-ssh-key"
-            property = "ssh-privatekey"
-          }
-        },
-        {
-          secretKey = "known_hosts"
-          remoteRef = {
-            key      = "secret/${var.env_name}/cicd-bot-ssh-key"
-            property = "known_hosts"
-          }
-        }
-      ]
-      refreshInterval = "5s"
-    }
-  })
-}
-
 resource "kubectl_manifest" "cicd_bot_personal_access_token" {
   count = var.env_name == "prod" ? 1 : 0
   yaml_body = yamlencode({
