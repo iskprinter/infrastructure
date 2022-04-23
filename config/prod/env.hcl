@@ -27,6 +27,6 @@ locals {
   external_dns_version                  = "0.7.6"  # The helm chart version
   hashicorp_vault_version               = "0.19.0" # The helm chart version
   terraform_version                     = "1.0.11"
-  kaniko_version                        = "1.7.0"
+  kaniko_version                        = "1.8.1"
   alpine_k8s_version                    = "1.20.7"
 }
