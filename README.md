@@ -37,6 +37,7 @@ Deploys a Kubernetes cluster and supporting resources
 1. Set your `/etc/hosts` file as shown below.
    ```
    127.0.0.1 iskprinter-local.com
+   127.0.0.1 www.iskprinter-local.com
    127.0.0.1 api.iskprinter-local.com
    ```
 

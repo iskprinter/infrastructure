@@ -13,6 +13,6 @@ remote_state {
 }
 
 locals {
-  kubernetes_provider = "minikube"
-  env_name            = "local"
+  kubernetes_provider      = "minikube"
+  env_name                 = "local"
 }
