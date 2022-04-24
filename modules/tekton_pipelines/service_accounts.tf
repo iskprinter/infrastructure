@@ -1,19 +1,19 @@
 resource "google_service_account" "cicd_bot" {
   project      = var.project
-  account_id   = "cicd-bot"
+  account_id   = var.cicd_bot_name
   display_name = "CICD Bot Service Account"
 }
 
 resource "kubernetes_service_account" "cicd_bot" {
   metadata {
     namespace = "tekton-pipelines"
-    name      = "cicd-bot"
+    name      = var.cicd_bot_name
     annotations = {
       "iam.gke.io/gcp-service-account" = google_service_account.cicd_bot.email
     }
   }
   secret {
-    name = "cicd-bot-ssh-key"
+    name = "${var.cicd_bot_name}-ssh-key"
   }
 }
 
@@ -103,7 +103,7 @@ resource "google_project_iam_member" "cicd_bot_role_member" {
 
 # Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
 resource "kubernetes_role" "tekton_triggers" {
-    metadata {
+  metadata {
     namespace = "tekton-pipelines"
     name      = "tekton-triggers"
   }
@@ -188,7 +188,7 @@ resource "kubernetes_cluster_role_binding" "tekton_triggers" {
 
 resource "kubernetes_cluster_role" "cicd_bot" {
   metadata {
-    name = "cicd-bot"
+    name = var.cicd_bot_name
   }
   # EventListeners need to be able to fetch all namespaced resources
   rule {
@@ -196,12 +196,17 @@ resource "kubernetes_cluster_role" "cicd_bot" {
     resources  = ["secrets"]
     verbs      = ["get"]
   }
+  rule {
+    api_groups = [""]
+    resources  = ["namespaces"]
+    verbs      = ["create", "delete", "get"]
+  }
 }
 
 # Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/rbac.yaml
 resource "kubernetes_cluster_role_binding" "cicd_bot" {
   metadata {
-    name = "cicd-bot"
+    name = var.cicd_bot_name
   }
   subject {
     kind      = "ServiceAccount"

@@ -1,5 +1,3 @@
-# Variables provided by Terragrunt
-
 variable "project" {
   type = string
 }
@@ -18,11 +16,4 @@ variable "kaniko_version" {
 
 variable "terraform_version" {
   type = string
-}
-
-# Defaults
-
-variable "cicd_bot_name" {
-  type    = string
-  default = "cicd-bot"
 }
