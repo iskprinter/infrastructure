@@ -17,7 +17,7 @@ resource "kubernetes_service_account" "cicd_bot" {
   }
 }
 
-resource "google_service_account_iam_member" "cicd_bot_iam_workload_identity_user_binding" {
+resource "google_service_account_iam_member" "cicd_bot_iam_workload_identity_user_member" {
   service_account_id = google_service_account.cicd_bot.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:${var.project}.svc.id.goog[${kubernetes_service_account.cicd_bot.metadata[0].namespace}/${kubernetes_service_account.cicd_bot.metadata[0].name}]"
@@ -95,7 +95,7 @@ resource "google_project_iam_custom_role" "cicd_bot_role" {
   ]
 }
 
-resource "google_project_iam_member" "cicd_bot_storage_admin_binding" {
+resource "google_project_iam_member" "cicd_bot_role_member" {
   project = var.project
   role    = google_project_iam_custom_role.cicd_bot_role.name
   member  = "serviceAccount:${google_service_account.cicd_bot.email}"

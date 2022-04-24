@@ -1,11 +1,15 @@
-resource "kubectl_manifest" "api_client_credentials" {
+resource "kubectl_manifest" "cicd_bot_ssh_key" {
+  count = var.env_name == "prod" ? 1 : 0
   yaml_body = yamlencode({
     apiVersion = "external-secrets.io/v1alpha1"
     kind       = "ExternalSecret"
     type       = "Opaque"
     metadata = {
-      namespace = "iskprinter"
-      name      = "api-client-credentials"
+      namespace = "tekton-pipelines"
+      name      = "cicd-bot-ssh-key"
+      annotations = {
+        "tekton.dev/git-0" = "github.com"
+      }
     }
     spec = {
       secretStoreRef = {
@@ -13,21 +17,21 @@ resource "kubectl_manifest" "api_client_credentials" {
         kind = "ClusterSecretStore"
       }
       target = {
-        name = "api-client-credentials"
+        name = "cicd-bot-ssh-key"
       }
       data = [
         {
-          secretKey = "id"
+          secretKey = "ssh-privatekey"
           remoteRef = {
-            key      = "secret/${var.env_name}/api-client-credentials"
-            property = "id"
-          },
+            key      = "secret/${var.env_name}/cicd-bot-ssh-key"
+            property = "ssh-privatekey"
+          }
         },
         {
-          secretKey = "secret"
+          secretKey = "known_hosts"
           remoteRef = {
-            key      = "secret/${var.env_name}/api-client-credentials"
-            property = "secret"
+            key      = "secret/${var.env_name}/cicd-bot-ssh-key"
+            property = "known_hosts"
           }
         }
       ]
