@@ -56,6 +56,8 @@ generate "modules" {
     module "${basename(path_relative_to_include("env"))}" {
       source                  = "../../../modules/${basename(path_relative_to_include("env"))}"
       hashicorp_vault_version = "${include.env.locals.hashicorp_vault_version}"
+      project                 = "${include.env.locals.project}"
+      region                  = "${include.global.locals.region}"
     }
 
   EOF
