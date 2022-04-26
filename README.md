@@ -55,6 +55,19 @@ Deploys a Kubernetes cluster and supporting resources
     terragrunt run-all apply --terragrunt-working-dir ./config
     ```
 
+## Annotate the Kubernetes service account `tekton-pipelines-controller`
+
+Annotating this service account will link it to a Google service account with permission to pull images.
+
+1. Annotate the Kubernetes service account.
+    ```
+    kubectl annotate serviceaccount \
+      tekton-pipelines-controller \
+      'iam.gke.io/gcp-service-account'='tekton-pipelines-controller@cameronhudson8.iam.gserviceaccount.com' \
+      --context gcp \
+      -n tekton-pipelines
+    ```
+
 ## Set secrets in Hashicorp Vault
 
 1. Install the hashicorp vault cli

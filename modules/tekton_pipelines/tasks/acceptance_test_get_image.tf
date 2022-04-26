@@ -22,7 +22,7 @@ resource "kubectl_manifest" "acceptance_test_get_image" {
             #!/bin/sh
             set -eux
             acceptance_test_image=$(sed -e '/^variable "image_acceptance_test" {/,/^}/!d;/ *default *= *"\(.*\)"/!d; s//\1/' variables.tf)
-            echo -n "$acceptance_test_image" > $(results.acceptance-test-image.path)
+            echo -n "$acceptance_test_image" | tee $(results.acceptance-test-image.path)
             EOF
         }
       ]

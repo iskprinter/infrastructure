@@ -48,13 +48,13 @@ resource "kubectl_manifest" "task_get_secret" {
           script = <<-EOF
             #!/bin/bash
             set -euxo pipefail
+            set +x
             secret_value=$(
                 kubectl get secret "$SECRET_NAME" \
                     -n "$SECRET_NAMESPACE" \
                     -o jsonpath="{.data.$${SECRET_KEY}}" \
                 | base64 -d
             )
-            set +x
             echo -n "$secret_value" > $(results.secret-value.path)
             set -x
             EOF
