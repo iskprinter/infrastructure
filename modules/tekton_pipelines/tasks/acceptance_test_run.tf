@@ -24,15 +24,17 @@ resource "kubectl_manifest" "acceptance_test_run" {
           env = [
             {
               name  = "CYPRESS_BASE_URL"
-              value = "frontend.iskprinter-pr-$(params.pr-number).service.cluster.local"
+              value = "http://frontend.iskprinter-pr-$(params.pr-number).svc.cluster.local"
             }
           ]
-        }
-      ]
-      workspaces = [
-        {
-          mountPath = "/workspace"
-          name      = "default"
+          command = [
+            "node_modules/.bin/cypress"
+          ]
+          args = [
+            "run",
+            "--config",
+            "videoRecording=false"
+          ]
         }
       ]
     }

@@ -151,7 +151,7 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
           runAfter = [
             "namespace-create",
           ]
-          name = "terragrunt-plan"
+          name = "terragrunt-apply"
           workspaces = [
             {
               name      = "default"
@@ -159,8 +159,18 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
             }
           ]
           taskRef = {
-            name = "terragrunt-plan"
+            name = "terragrunt-apply"
           }
+          params = [
+            {
+              name  = "env-name"
+              value = "pr"
+            },
+            {
+              name  = "pr-number"
+              value = "$(params.pr-number)"
+            }
+          ]
         },
         {
           runAfter = [
@@ -178,26 +188,26 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
             name = "acceptance-test-get-image"
           }
         },
-        # {
-        #   runAfter = [
-        #     "terragrunt-plan",
-        #     "acceptance-test-get-image",
-        #   ]
-        #   name = "acceptance-test-run"
-        #   taskRef = {
-        #     name = "acceptance-test-run"
-        #   }
-        #   params = [
-        #     {
-        #       name  = "acceptance-test-image"
-        #       value = "$(tasks.acceptance-test-get-image.acceptance-test-image)"
-        #     },
-        #     {
-        #       name  = "pr-number"
-        #       value = "$(params.pr-number)"
-        #     }
-        #   ]
-        # }
+        {
+          runAfter = [
+            "terragrunt-apply",
+            "acceptance-test-get-image",
+          ]
+          name = "acceptance-test-run"
+          taskRef = {
+            name = "acceptance-test-run"
+          }
+          params = [
+            {
+              name  = "acceptance-test-image"
+              value = "$(tasks.acceptance-test-get-image.results.acceptance-test-image)"
+            },
+            {
+              name  = "pr-number"
+              value = "$(params.pr-number)"
+            }
+          ]
+        }
       ]
       finally = [
         {

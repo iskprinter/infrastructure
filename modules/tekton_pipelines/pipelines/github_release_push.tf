@@ -61,6 +61,12 @@ resource "kubectl_manifest" "pipeline_github_release_push" {
           taskRef = {
             name = "terragrunt-apply"
           }
+          params = [
+            {
+              name  = "env-name"
+              value = "prod"
+            }
+          ]
         }
       ]
     }
