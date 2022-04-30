@@ -36,9 +36,9 @@ Deploys a Kubernetes cluster and supporting resources
 
 1. Set your `/etc/hosts` file as shown below.
    ```
-   127.0.0.1 iskprinter-local.com
-   127.0.0.1 www.iskprinter-local.com
-   127.0.0.1 api.iskprinter-local.com
+   127.0.0.1 iskprinter-test.com
+   127.0.0.1 www.iskprinter-test.com
+   127.0.0.1 api.iskprinter-test.com
    ```
 
 ## Create a production cluster
@@ -309,7 +309,7 @@ Annotating this service account will link it to a Google service account with pe
 
 1. Add the following secrets. You can do this at https://vault.iskprinter.com if it's more comfortable.
 
-    1. Add the Eve API credentials for the eve application. Do this both for env=local and env=prod.
+    1. Add the Eve API credentials for the eve application. Do this for env=prod, env=test, and env=dev.
         ```
         vault kv put secret/<env>/api-client-credentials \
             id=<client-id> \
