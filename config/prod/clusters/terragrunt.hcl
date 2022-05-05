@@ -16,12 +16,13 @@ generate "modules" {
   contents = <<-EOF
 
     module "${basename(path_relative_to_include("env"))}" {
-      source             = "../../../modules/${basename(path_relative_to_include("env"))}"
-      project            = "${include.env.locals.project}"
-      location           = "${include.global.locals.region}-a"
-      cluster_name       = "${include.env.locals.cluster_name}"
-      min_node_8gb_count = "${include.env.locals.min_node_8gb_count}"
-      max_node_8gb_count = "${include.env.locals.max_node_8gb_count}"
+      source         = "../../../modules/${basename(path_relative_to_include("env"))}"
+      project        = "${include.env.locals.project}"
+      location       = "${include.global.locals.region}-a"
+      cluster_name   = "${include.env.locals.cluster_name}"
+      machine_type   = "${include.env.locals.machine_type}"
+      min_node_count = "${include.env.locals.min_node_count}"
+      max_node_count = "${include.env.locals.max_node_count}"
     }
 
   EOF

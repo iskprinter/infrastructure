@@ -17,8 +17,9 @@ locals {
   env_name                              = "prod"
   project                               = "cameronhudson8"
   cluster_name                          = "general-purpose-cluster"
-  min_node_8gb_count                    = 1
-  max_node_8gb_count                    = 3
+  machine_type                          = "e2-highmem-2"
+  min_node_count                        = 1
+  max_node_count                        = 3
   cert_manager_gcp_service_account_name = "cert-manager"
   tekton_pipeline_version               = "0.30.0"
   tekton_triggers_version               = "0.17.1"

@@ -10,10 +10,14 @@ variable "cluster_name" {
   type = string
 }
 
-variable "min_node_8gb_count" {
+variable "machine_type" {
+  type = string
+}
+
+variable "min_node_count" {
   type = number
 }
 
-variable "max_node_8gb_count" {
+variable "max_node_count" {
   type = number
 }
