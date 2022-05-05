@@ -37,8 +37,8 @@ resource "kubectl_manifest" "task_build_and_push_image" {
             "--cache=true"
           ]
           resources = {
-            limits = {
-              memory = "2Gi"
+            limits = {  
+              memory = "3Gi"
             }
           }
         }

@@ -28,19 +28,19 @@ resource "google_container_cluster" "general_purpose" {
   }
 }
 
-resource "google_container_node_pool" "pool_8gb" {
+resource "google_container_node_pool" "pool_e2-highmem-2" {
   project            = var.project
-  name               = "pool-8gb"
+  name               = "pool-${var.machine_type}"
   location           = var.location
   cluster            = var.cluster_name
   initial_node_count = 1
   autoscaling {
-    min_node_count = var.min_node_8gb_count
-    max_node_count = var.max_node_8gb_count
+    min_node_count = var.min_node_count
+    max_node_count = var.max_node_count
   }
   node_config {
     preemptible     = true
-    machine_type    = "e2-standard-2"
+    machine_type    = var.machine_type
     disk_size_gb    = 32
     service_account = google_service_account.gke.email
     oauth_scopes = [
