@@ -77,33 +77,3 @@ resource "helm_release" "hashicorp_vault" {
     value = true
   }
 }
-
-resource "kubernetes_ingress" "hashicorp_vault" {
-  wait_for_load_balancer = true
-  metadata {
-    namespace = helm_release.hashicorp_vault.namespace
-    name      = "hashicorp-vault"
-    annotations = {
-      "cert-manager.io/cluster-issuer" = "lets-encrypt"
-    }
-  }
-  spec {
-    ingress_class_name = "nginx"
-    rule {
-      host = "vault.iskprinter.com"
-      http {
-        path {
-          path = "/"
-          backend {
-            service_name = "hashicorp-vault-ui"
-            service_port = 8200
-          }
-        }
-      }
-    }
-    tls {
-      hosts       = ["vault.iskprinter.com"]
-      secret_name = "tls-hashicorp-vault"
-    }
-  }
-}
