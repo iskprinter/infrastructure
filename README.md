@@ -76,9 +76,14 @@ Annotating this service account will link it to a Google service account with pe
     brew install hashicorp/tap/vault
     ```
 
+1. Port-forward the hashicorp vault to your local machine.
+    ```
+    kubectl --context gcp -n hashicorp-vault port-forward svc/hashicorp-vault-ui 8200:8200
+    ```
+
 1. Set the vault address in a shell.
     ```
-    export VAULT_ADDR='https://vault.iskprinter.com'
+    export VAULT_ADDR='http://localhost:8200'
     ```
 
 1. Initialize the vault. **Save the printed unseal key and root token.**
@@ -280,7 +285,7 @@ Annotating this service account will link it to a Google service account with pe
     spec:
       provider:
         vault:
-          server: https://vault.iskprinter.com
+          server: https://hashicorp-vault-internal.hashicorp-vault.svc.cluster.local:8200
           path: secret
           version: v2
           auth:
@@ -307,7 +312,7 @@ Annotating this service account will link it to a Google service account with pe
         kv
     ```
 
-1. Add the following secrets. You can do this at https://vault.iskprinter.com if it's more comfortable.
+1. Add the following secrets.
 
     1. Add the Eve API credentials for the eve application. Do this for env=prod, env=test, and env=dev.
         ```
@@ -329,22 +334,12 @@ Annotating this service account will link it to a Google service account with pe
             secret=<github-webhook-secret>
         ```
 
-1. Add an SSH private key and known_hosts content so that the CICD bot can pull code. (You will have to deindent the following code block if you are viewing this file in a text editor.)
-    ```
-    cat <<EOF | kubectl --context gcp apply -f -
-    apiVersion: v1
-    kind: Secret
-    type: kubernetes.io/ssh-auth
-    metadata:
-      namespace: tekton-pipelines
-      name: cicd-bot-ssh-key
-      annotations:
-        "tekton.dev/git-0": "github.com"
-    data: 
-      ssh-privatekey: $(cat ~/.ssh/IskprinterGitBot.id_rsa | base64)
-      known_hosts: $(ssh-keyscan github.com | base64)
-    EOF
-    ```
+    1. Add an SSH private key and a known_hosts file for Github so that the CICD bot can pull code.
+        ```
+        vault kv put secret/prod/ssh-bot-cicd-key \
+            ssh-privatekey="$(cat ~/.ssh/IskprinterGitBot.id_rsa)" \
+            known_hosts="$(ssh-keyscan github.com)"
+        ```
 
 1. Create a `docker-registry` secret to allow image pulling from GCP Artifact Registry.
     ```
