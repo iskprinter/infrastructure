@@ -1,9 +1,9 @@
 terraform {
-  required_version = ">= 0.13"
+  required_version = ">= 1.0.0, < 2.0.0"
   required_providers {
     kubectl = {
       source  = "gavinbunney/kubectl"
-      version = ">= 1.7.0"
+      version = ">= 1.7.0, < 2.0.0"
     }
   }
 }

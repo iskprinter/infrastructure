@@ -1,5 +1,5 @@
 dependencies {
-  paths = ["../clusters"]
+  paths = ["../cluster"]
 }
 
 include "global" {
@@ -44,7 +44,7 @@ generate "modules" {
   if_exists = "overwrite_terragrunt"
   contents = <<-EOF
 
-    module "${basename(path_relative_to_include("env"))}" {
+    module "${replace(basename(path_relative_to_include("env")), "-", "_")}" {
       source                = "../../../modules/${basename(path_relative_to_include("env"))}"
       ingress_nginx_version = "${include.env.locals.ingress_nginx_version}"
     }

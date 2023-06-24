@@ -8,15 +8,17 @@ Deploys a Kubernetes cluster and supporting resources
 
 1. Create a GCS bucket for use as a terraform backend.
     ```bash
-    gsutil mb -l US gs://iskprinter-tf-state-prod
+    gsutil mb -l US gs://iskprinter-tf-state
     ```
 
 1. Enable versioning on the bucket.
     ```bash
-    gsutil versioning set on gs://iskprinter-tf-state-prod
+    gsutil versioning set on gs://iskprinter-tf-state
     ```
 
-## Create a local cluster and ingress
+## Create a Kubernetes cluster
+
+### Locally, with Minikube
 
 1. Install prerequisites, including minikube, `minikube`, and start it.
     ```
@@ -24,7 +26,7 @@ Deploys a Kubernetes cluster and supporting resources
     brew install --cask docker
     brew install helm
     minikube start \
-        --kubernetes-version=v1.21.9 \
+        --kubernetes-version=v1.26.1 \
         --cpus 4 \
         --memory 7951
     ```
@@ -32,27 +34,29 @@ Deploys a Kubernetes cluster and supporting resources
 1. Enable the ingress extension.
     ```
     minikube addons enable ingress
+    minikube tunnel
     ```
 
 1. Set your `/etc/hosts` file as shown below.
    ```
-   127.0.0.1 iskprinter-test.com
-   127.0.0.1 www.iskprinter-test.com
-   127.0.0.1 api.iskprinter-test.com
+   127.0.0.1 iskprinter-dev.com
+   127.0.0.1 www.iskprinter-dev.com
+   127.0.0.1 api.iskprinter-dev.com
    ```
 
-## Create a production cluster
+### In the Cloud (Google Cloud Platform, GCP)
 
 1. Initialize and deploy the production cluster.
     ```bash
-    terragrunt apply --terragrunt-working-dir ./config/prod/clusters
+    terragrunt apply --terragrunt-working-dir ./config/prod/cluster
     ```
 
-## Deploy remaining local and prod infrastructure
+## Deploy the remaining modules into the cluster
 
 1. Initialize and deploy the remaining resources.
     ```bash
-    terragrunt run-all apply --terragrunt-working-dir ./config
+    ENV_NAME='dev'  # or 'prod'
+    terragrunt run-all apply --terragrunt-working-dir "./config/${ENV_NAME}"
     ```
 
 ## Annotate the Kubernetes service account `tekton-pipelines-controller`
@@ -78,7 +82,8 @@ Annotating this service account will link it to a Google service account with pe
 
 1. Port-forward the hashicorp vault to your local machine.
     ```
-    kubectl --context gcp -n hashicorp-vault port-forward svc/hashicorp-vault-ui 8200:8200
+    CONTEXT='minikube'  # or 'gcp'
+    kubectl --context "$CONTEXT" -n hashicorp-vault port-forward svc/hashicorp-vault 8200:8200
     ```
 
 1. Set the vault address in a shell.
@@ -259,12 +264,12 @@ Annotating this service account will link it to a Google service account with pe
 
 1. Create a Secret and ClusterSecretStore resource. (You will have to deindent the following code block if you are viewing this file in a text editor.)
     ```
-    for context in gcp minikube; do
-    cat <<EOF | kubectl --context "$context" apply -f -
+    CONTEXT='minikube'  # or 'gcp'
+    cat <<EOF | kubectl --context "$CONTEXT" apply -f -
     apiVersion: v1
     kind: Secret
     metadata:
-      namespace: external-secrets
+      namespace: external-secrets-operator
       name: approle-secret
     stringData:
       secretId: $(
@@ -273,19 +278,18 @@ Annotating this service account will link it to a Google service account with pe
           | jq -r '.data.secret_id'
       )
     EOF
-    done
     
-    for context in gcp minikube; do
-    cat <<EOF | kubectl --context "$context" apply -f -
+    CONTEXT='minikube'  # or gcp
+    cat <<EOF | kubectl --context "$CONTEXT" apply -f -
     apiVersion: external-secrets.io/v1beta1
     kind: ClusterSecretStore
     metadata:
-      namespace: external-secrets
+      namespace: external-secrets-operator
       name: hashicorp-vault-kv
     spec:
       provider:
         vault:
-          server: https://hashicorp-vault-internal.hashicorp-vault.svc.cluster.local:8200
+          server: http://hashicorp-vault-internal.hashicorp-vault.svc.cluster.local:8200
           path: secret
           version: v2
           auth:
@@ -297,11 +301,10 @@ Annotating this service account will link it to a Google service account with pe
                   | jq -r '.data.role_id'
               )
               secretRef:
-                namespace: external-secrets
+                namespace: external-secrets-operator
                 name: approle-secret
                 key: secretId
     EOF
-    done
     ```
 
 1. Enable the key-value secret store.
@@ -314,51 +317,36 @@ Annotating this service account will link it to a Google service account with pe
 
 1. Add the following secrets.
 
-    1. Add the Eve API credentials for the eve application. Do this for env=prod, env=test, and env=dev.
+    1. (Local and Prod) Add the Eve API credentials for the eve application.
         ```
-        vault kv put secret/<env>/api-client-credentials \
+        vault kv put secret/api-client-credentials \
             id=<client-id> \
             secret=<client-secret>
         ```
 
-    1. Add a personal access token so the CICD bot can update the Github build status.
+    1. (Local and Prod) Add the Iskprinter JWT public and private keys.
         ```
-        vault kv put secret/prod/cicd-bot-personal-access-token \
+        vault kv put secret/iskprinter-jwt-keys \
+            public-key=@<path-to-public-key> \
+            private-key=@<path-to-private-key>
+        ```
+
+    1. (Prod only) Add a personal access token so the CICD bot can update the Github build status.
+        ```
+        vault kv put secret/cicd-bot-personal-access-token \
             username=IskprinterGitBot \
             password=<cicd-bot-personal-access-token>
         ```
 
-    1. Add a Github webhook secret so that the Github status webhook is protected.
+    1. (Prod only) Add a Github webhook secret so that the Github status webhook is protected.
         ```
-        vault kv put secret/prod/github-webhook-secret \
+        vault kv put secret/github-webhook-secret \
             secret=<github-webhook-secret>
         ```
 
-    1. Add an SSH private key and a known_hosts file for Github so that the CICD bot can pull code.
+    1. (Prod only) Add an SSH private key and a known_hosts file for Github so that the CICD bot can pull code.
         ```
-        vault kv put secret/prod/ssh-bot-cicd-key \
+        vault kv put secret/ssh-bot-cicd-key \
             ssh-privatekey="$(cat ~/.ssh/IskprinterGitBot.id_rsa)" \
             known_hosts="$(ssh-keyscan github.com)"
         ```
-
-1. Create a `docker-registry` secret to allow image pulling from GCP Artifact Registry.
-    ```
-    gcloud iam service-accounts keys create \
-            /tmp/minikube-image-puller-key.json \
-            --iam-account=minikube-image-puller@cameronhudson8.iam.gserviceaccount.com
-    kubectl create secret docker-registry image-pull-secret \
-        --context minikube \
-        -n iskprinter \
-        --docker-server='https://us-west1-docker.pkg.dev' \
-        --docker-email='minikube-image-puller@cameronhudson8.iam.gserviceaccount.com' \
-        --docker-username='_json_key' \
-        --docker-password="$(cat /tmp/minikube-image-puller-key.json)"
-    ```
-
-1. Patch the default serviceaccount in the `iskprinter` namespace.
-    ```
-    kubectl patch serviceaccount default \
-        --context minikube \
-        -n iskprinter \
-        -p '{"imagePullSecrets": [{"name": "image-pull-secret"}]}'
-    ```

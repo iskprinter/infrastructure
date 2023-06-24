@@ -1,8 +1,8 @@
 dependencies {
   paths = [
-    "../clusters",
+    "../cluster",
     "../namespaces",
-    "../external_secrets_crds"
+    "../external-secrets-operator"
   ]
 }
 
@@ -23,16 +23,6 @@ generate "providers" {
   if_exists = "overwrite_terragrunt"
   contents = <<-EOF
 
-    terraform {
-      required_version = ">= 0.13"
-      required_providers {
-        kubectl = {
-          source  = "gavinbunney/kubectl"
-          version = ">= 1.7.0"
-        }
-      }
-    }
-
     data "google_client_config" "provider" {}
 
     data "google_container_cluster" "general_purpose" {
@@ -49,7 +39,6 @@ generate "providers" {
     }
 
   EOF
-
 }
 
 generate "modules" {
@@ -57,7 +46,7 @@ generate "modules" {
   if_exists = "overwrite_terragrunt"
   contents = <<-EOF
 
-    module "${basename(path_relative_to_include("env"))}" {
+    module "${replace(basename(path_relative_to_include("env")), "-", "_")}" {
       source   = "../../../modules/${basename(path_relative_to_include("env"))}"
       env_name = "${include.env.locals.env_name}"
     }
