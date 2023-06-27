@@ -18,7 +18,7 @@ generate "modules" {
     module "${replace(basename(path_relative_to_include("env")), "-", "_")}" {
       source  = "../../../modules/${basename(path_relative_to_include("env"))}"
       project = "${include.env.locals.project}"
-      region  = "${include.global.locals.region}"
+      region  = "${include.env.locals.region}"
     }
 
   EOF

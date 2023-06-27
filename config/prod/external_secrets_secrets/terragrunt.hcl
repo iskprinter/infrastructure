@@ -27,7 +27,7 @@ generate "providers" {
 
     data "google_container_cluster" "general_purpose" {
       project  = "${include.env.locals.project}"
-      location = "${include.global.locals.region}-a"
+      location = "${include.env.locals.region}-a"
       name     = "${include.env.locals.cluster_name}"
     }
 

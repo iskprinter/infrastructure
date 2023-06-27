@@ -23,7 +23,7 @@ generate "providers" {
 
     data "google_container_cluster" "general_purpose" {
       project  = "${include.env.locals.project}"
-      location = "${include.global.locals.region}-a"
+      location = "${include.env.locals.region}-a"
       name     = "${include.env.locals.cluster_name}"
     }
 
@@ -56,7 +56,7 @@ generate "modules" {
       source                  = "../../../modules/${basename(path_relative_to_include("env"))}"
       hashicorp_vault_version = "${include.global.locals.hashicorp_vault_version}"
       project                 = "${include.env.locals.project}"
-      region                  = "${include.global.locals.region}"
+      region                  = "${include.env.locals.region}"
     }
 
   EOF

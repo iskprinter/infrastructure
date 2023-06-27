@@ -19,11 +19,19 @@ generate "providers" {
   if_exists = "overwrite_terragrunt"
   contents = <<-EOF
 
+    terraform {
+      required_providers {
+        kubectl = {
+          source = "gavinbunney/kubectl"
+        }
+      }
+    }
+
     data "google_client_config" "provider" {}
 
     data "google_container_cluster" "general_purpose" {
       project  = "${include.env.locals.project}"
-      location = "${include.global.locals.region}-a"
+      location = "${include.env.locals.region}-a"
       name     = "${include.env.locals.cluster_name}"
     }
 
@@ -54,7 +62,7 @@ generate "modules" {
     module "${replace(basename(path_relative_to_include("env")), "-", "_")}" {
       source             = "../../../modules/${basename(path_relative_to_include("env"))}"
       project            = "${include.env.locals.project}"
-      region             = "${include.global.locals.region}"
+      region             = "${include.env.locals.region}"
       terraform_version  = "${include.env.locals.terraform_version}"
       kaniko_version     = "${include.env.locals.kaniko_version}"
       alpine_k8s_version = "${include.env.locals.alpine_k8s_version}"

@@ -25,7 +25,7 @@ locals {
   tekton_pipeline_version               = "0.30.0"
   tekton_triggers_version               = "0.17.1"
   tekton_dashboard_version              = "0.22.0"
-  ingress_nginx_version                 = "4.0.6"  # The helm chart version
+  ingress_nginx_version                 = "4.7.0"  # The helm chart version
   external_dns_version                  = "0.7.6"  # The helm chart version
   terraform_version                     = "1.0.11"
   kaniko_version                        = "1.8.1"
