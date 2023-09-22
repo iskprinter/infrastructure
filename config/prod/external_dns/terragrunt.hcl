@@ -1,5 +1,5 @@
 dependencies {
-  paths = ["../clusters"]
+  paths = ["../cluster"]
 }
 
 include "global" {
@@ -23,7 +23,7 @@ generate "providers" {
 
     data "google_container_cluster" "general_purpose" {
       project  = "${include.env.locals.project}"
-      location = "${include.global.locals.region}-a"
+      location = "${include.env.locals.region}-a"
       name     = "${include.env.locals.cluster_name}"
     }
 
@@ -45,7 +45,7 @@ generate "modules" {
   if_exists = "overwrite_terragrunt"
   contents = <<-EOF
 
-    module "${basename(path_relative_to_include("env"))}" {
+    module "${replace(basename(path_relative_to_include("env")), "-", "_")}" {
       source               = "../../../modules/${basename(path_relative_to_include("env"))}"
       project              = "${include.env.locals.project}"
       external_dns_version = "${include.env.locals.external_dns_version}"

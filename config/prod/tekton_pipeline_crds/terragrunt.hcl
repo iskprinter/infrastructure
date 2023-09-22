@@ -1,5 +1,5 @@
 dependencies {
-  paths = ["../clusters"]
+  paths = ["../cluster"]
 }
 
 include "global" {
@@ -19,21 +19,11 @@ generate "providers" {
   if_exists = "overwrite_terragrunt"
   contents = <<-EOF
 
-    terraform {
-      required_version = ">= 0.13"
-      required_providers {
-        kubectl = {
-          source  = "gavinbunney/kubectl"
-          version = ">= 1.7.0"
-        }
-      }
-    }
-
     data "google_client_config" "provider" {}
 
     data "google_container_cluster" "general_purpose" {
       project  = "${include.env.locals.project}"
-      location = "${include.global.locals.region}-a"
+      location = "${include.env.locals.region}-a"
       name     = "${include.env.locals.cluster_name}"
     }
 
@@ -45,7 +35,6 @@ generate "providers" {
     }
 
   EOF
-
 }
 
 generate "modules" {
@@ -53,7 +42,7 @@ generate "modules" {
   if_exists = "overwrite_terragrunt"
   contents = <<-EOF
 
-    module "${basename(path_relative_to_include("env"))}" {
+    module "${replace(basename(path_relative_to_include("env")), "-", "_")}" {
       source                  = "../../../modules/${basename(path_relative_to_include("env"))}"
       tekton_pipeline_version = "${include.env.locals.tekton_pipeline_version}"
     }

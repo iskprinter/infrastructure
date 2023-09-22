@@ -21,7 +21,7 @@ resource "kubectl_manifest" "acceptance_test_get_image" {
           script     = <<-EOF
             #!/bin/sh
             set -eux
-            acceptance_test_image=$(sed -e '/^variable "image_acceptance_test" {/,/^}/!d;/ *default *= *"\(.*\)"/!d; s//\1/' variables.tf)
+            acceptance_test_image=$(sed -n -E 's/^ +acceptance_test_image += "(.*)"$/\1/p' ./config/pr/terragrunt.hcl)
             echo -n "$acceptance_test_image" | tee $(results.acceptance-test-image.path)
             EOF
         }

@@ -67,6 +67,8 @@ resource "google_project_iam_custom_role" "cicd_bot_role" {
     "container.jobs.delete",
     "container.jobs.get",
     "container.jobs.update",
+    "container.namespaces.create",
+    "container.namespaces.delete",
     "container.namespaces.get",
     "container.persistentVolumeClaims.create",
     "container.persistentVolumeClaims.delete",

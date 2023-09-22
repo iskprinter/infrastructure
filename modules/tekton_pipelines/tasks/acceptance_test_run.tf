@@ -27,14 +27,6 @@ resource "kubectl_manifest" "acceptance_test_run" {
               value = "http://frontend.iskprinter-pr-$(params.pr-number).svc.cluster.local"
             }
           ]
-          command = [
-            "node_modules/.bin/cypress"
-          ]
-          args = [
-            "run",
-            "--config",
-            "videoRecording=false"
-          ]
         }
       ]
     }

@@ -1,5 +1,5 @@
 dependencies {
-  paths = ["../clusters"]
+  paths = ["../cluster"]
 }
 
 include "global" {
@@ -20,11 +20,9 @@ generate "providers" {
   contents = <<-EOF
 
     terraform {
-      required_version = ">= 0.13"
       required_providers {
         kubectl = {
-          source  = "gavinbunney/kubectl"
-          version = ">= 1.7.0"
+          source = "gavinbunney/kubectl"
         }
       }
     }
@@ -33,7 +31,7 @@ generate "providers" {
 
     data "google_container_cluster" "general_purpose" {
       project  = "${include.env.locals.project}"
-      location = "${include.global.locals.region}-a"
+      location = "${include.env.locals.region}-a"
       name     = "${include.env.locals.cluster_name}"
     }
 
@@ -54,7 +52,6 @@ generate "providers" {
     }
 
   EOF
-
 }
 
 generate "modules" {
@@ -62,10 +59,10 @@ generate "modules" {
   if_exists = "overwrite_terragrunt"
   contents = <<-EOF
 
-    module "${basename(path_relative_to_include("env"))}" {
+    module "${replace(basename(path_relative_to_include("env")), "-", "_")}" {
       source             = "../../../modules/${basename(path_relative_to_include("env"))}"
       project            = "${include.env.locals.project}"
-      region             = "${include.global.locals.region}"
+      region             = "${include.env.locals.region}"
       terraform_version  = "${include.env.locals.terraform_version}"
       kaniko_version     = "${include.env.locals.kaniko_version}"
       alpine_k8s_version = "${include.env.locals.alpine_k8s_version}"

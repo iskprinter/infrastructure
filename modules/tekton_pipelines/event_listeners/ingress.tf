@@ -1,22 +1,25 @@
-resource "kubernetes_ingress" "tekton_triggers_ingress" {
+resource "kubernetes_ingress_v1" "tekton_triggers_ingress" {
   metadata {
     name      = "tekton-triggers-ingress"
     namespace = "tekton-pipelines"
     annotations = {
-      "cert-manager.io/cluster-issuer"           = "lets-encrypt"
-      "kubernetes.io/ingress.class"              = "nginx"
-      "nginx.ingress.kubernetes.io/ssl-redirect" = "true"
+      "cert-manager.io/cluster-issuer" = "lets-encrypt"
     }
   }
   spec {
+    ingress_class_name = "nginx"
     rule {
       host = "tekton-triggers.iskprinter.com"
       http {
         path {
           path = "/"
           backend {
-            service_name = "el-github"
-            service_port = 8080
+            service {
+              name = "el-github"
+              port {
+                number = 8080
+              }
+            }
           }
         }
       }
