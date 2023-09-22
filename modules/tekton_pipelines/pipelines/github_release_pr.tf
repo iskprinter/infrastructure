@@ -133,23 +133,7 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
         },
         {
           runAfter = [
-            "report-initial-status",
             "github-checkout-commit",
-          ]
-          name = "namespace-create"
-          taskRef = {
-            name = "namespace-create"
-          },
-          params = [
-            {
-              name  = "namespace"
-              value = "iskprinter-pr-$(params.pr-number)"
-            }
-          ]
-        },
-        {
-          runAfter = [
-            "namespace-create",
           ]
           name = "terragrunt-apply"
           workspaces = [
@@ -235,17 +219,27 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
           }
         },
         {
-          name = "namespace-delete"
-          taskRef = {
-            name = "namespace-delete"
-          },
-          params = [
+          name = "terragrunt-destroy"
+          workspaces = [
             {
-              name  = "namespace"
-              value = "iskprinter-pr-$(params.pr-number)"
+              name      = "default"
+              workspace = "default" # Must match above
             }
           ]
-        }
+          taskRef = {
+            name = "terragrunt-destroy"
+          }
+          params = [
+            {
+              name  = "env-name"
+              value = "pr"
+            },
+            {
+              name  = "pr-number"
+              value = "$(params.pr-number)"
+            }
+          ]
+        },
       ]
     }
   })

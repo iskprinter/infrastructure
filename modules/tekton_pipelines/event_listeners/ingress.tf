@@ -3,8 +3,7 @@ resource "kubernetes_ingress_v1" "tekton_triggers_ingress" {
     name      = "tekton-triggers-ingress"
     namespace = "tekton-pipelines"
     annotations = {
-      "cert-manager.io/cluster-issuer"           = "lets-encrypt"
-      "nginx.ingress.kubernetes.io/ssl-redirect" = "true"
+      "cert-manager.io/cluster-issuer" = "lets-encrypt"
     }
   }
   spec {
