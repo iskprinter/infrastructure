@@ -2,10 +2,9 @@ variable "hashicorp_vault_version" {
   type = string
 }
 
-variable "gcp_configuration" {
-  default = null
+variable "gcp_project" {
   type    = object({
-    project = string
+    name    = string
     region  = string
   })
 }
