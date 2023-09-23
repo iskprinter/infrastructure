@@ -1,5 +1,8 @@
 dependencies {
-  paths = ["../cluster"]
+  paths = [
+    "../cluster",
+    "../tekton-pipeline-crds",
+  ]
 }
 
 include "global" {
@@ -30,18 +33,7 @@ generate "providers" {
     provider "kubernetes" {
       host                   = "https://$${data.google_container_cluster.general_purpose.endpoint}"
       token                  = data.google_client_config.provider.access_token
-      cluster_ca_certificate = base64decode(data.google_container_cluster.general_purpose.master_auth[0].cluster_ca_certificate)
-      experiments {
-        manifest_resource = true
-      }
-    }
-
-    provider "helm" {
-      kubernetes {
-        host                   = "https://$${data.google_container_cluster.general_purpose.endpoint}"
-        token                  = data.google_client_config.provider.access_token
-        cluster_ca_certificate = base64decode(data.google_container_cluster.general_purpose.master_auth[0].cluster_ca_certificate)
-      }
+      cluster_ca_certificate = base64decode(data.google_container_cluster.general_purpose.master_auth[0].cluster_ca_certificate) 
     }
 
   EOF
@@ -54,11 +46,7 @@ generate "modules" {
 
     module "${replace(basename(path_relative_to_include("env")), "-", "_")}" {
       source                  = "../../../modules/${basename(path_relative_to_include("env"))}"
-      hashicorp_vault_version = "${include.global.locals.hashicorp_vault_version}"
-      gcp_project = {
-        name    = "${include.env.locals.project}"
-        region  = "${include.env.locals.region}"
-      }
+      tekton_triggers_version = "${include.env.locals.tekton_triggers_version}"
     }
 
   EOF

@@ -20,7 +20,7 @@ Deploys a Kubernetes cluster and supporting resources
 
 ### Locally, with Minikube
 
-1. Install prerequisites, including minikube, `minikube`, and start it.
+1. Install prerequisites, including `minikube`, and start it.
     ```
     brew install minikube
     brew install --cask docker
@@ -53,11 +53,29 @@ Deploys a Kubernetes cluster and supporting resources
 
 ## Deploy the remaining modules into the cluster
 
-1. Initialize and deploy the remaining resources.
-    ```bash
-    ENV_NAME='dev'  # or 'prod'
-    terragrunt run-all apply --terragrunt-working-dir "./config/${ENV_NAME}"
-    ```
+### Locally, with Minikube
+
+1. Initialize and deploy the remaining modules, in the following order:
+    1. `./config/prod/cert-manager`
+    1. `./config/prod/mongodb-operator`
+
+### In the Cloud (Google Cloud Platform, GCP)
+
+1. Initialize and deploy the remaining modules, in the following order:
+    1. `./config/prod/backups`
+    1. `./config/prod/cert-manager`
+    1. `./config/prod/container-registries`
+    1. `./config/prod/external-dns`
+    1. `./config/prod/external-secrets-operator`
+    1. `./config/prod/hashicorp-vault`
+    1. `./config/prod/ingress-nginx`
+    1. `./config/prod/mongodb-operator`
+    1. `./config/prod/tekton-pipeline-crds`
+    1. `./config/prod/tekton-dashboard-crds`
+    1. `./config/prod/tekton-triggers-crds`
+    1. `./config/prod/tekton-triggers-interceptors-crds`
+    1. `./config/prod/tekton-pipelines`
+    1. `./config/prod/user-accounts`
 
 ## Annotate the Kubernetes service account `tekton-pipelines-controller`
 
@@ -72,7 +90,7 @@ Annotating this service account will link it to a Google service account with pe
       -n tekton-pipelines
     ```
 
-## Set secrets in Hashicorp Vault
+## Set up Hashicorp Vault (Cloud only)
 
 1. Install the hashicorp vault cli
     ```
@@ -82,8 +100,7 @@ Annotating this service account will link it to a Google service account with pe
 
 1. Port-forward the hashicorp vault to your local machine.
     ```
-    CONTEXT='minikube'  # or 'gcp'
-    kubectl --context "$CONTEXT" -n hashicorp-vault port-forward svc/hashicorp-vault 8200:8200
+    kubectl --context 'gcp' -n hashicorp-vault port-forward svc/hashicorp-vault 8200:8200
     ```
 
 1. Set the vault address in a shell.
@@ -264,8 +281,7 @@ Annotating this service account will link it to a Google service account with pe
 
 1. Create a Secret and ClusterSecretStore resource. (You will have to deindent the following code block if you are viewing this file in a text editor.)
     ```
-    CONTEXT='minikube'  # or 'gcp'
-    cat <<EOF | kubectl --context "$CONTEXT" apply -f -
+    cat <<EOF | kubectl --context 'gcp' apply -f -
     apiVersion: v1
     kind: Secret
     metadata:
@@ -279,8 +295,7 @@ Annotating this service account will link it to a Google service account with pe
       )
     EOF
     
-    CONTEXT='minikube'  # or gcp
-    cat <<EOF | kubectl --context "$CONTEXT" apply -f -
+    cat <<EOF | kubectl --context 'gcp' apply -f -
     apiVersion: external-secrets.io/v1beta1
     kind: ClusterSecretStore
     metadata:
