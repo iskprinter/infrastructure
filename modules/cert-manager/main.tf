@@ -48,12 +48,12 @@ resource "helm_release" "cert_manager_operator" {
   }
 }
 
-resource "kubectl_manifest" "issuer_lets_encrypt" {
+resource "kubernetes_manifest" "issuer_lets_encrypt" {
   depends_on = [
     helm_release.cert_manager_operator
   ]
   count = (var.use_real_lets_encrypt_certs ? 1 : 0)
-  yaml_body = yamlencode({
+  manifest = {
     apiVersion = "cert-manager.io/v1"
     kind       = "ClusterIssuer"
     metadata = {
@@ -81,15 +81,15 @@ resource "kubectl_manifest" "issuer_lets_encrypt" {
         ]
       }
     }
-  })
+  }
 }
 
-resource "kubectl_manifest" "issuer_self_signed" {
+resource "kubernetes_manifest" "issuer_self_signed" {
   depends_on = [
     helm_release.cert_manager_operator
   ]
   count = (var.use_real_lets_encrypt_certs ? 0 : 1)
-  yaml_body = yamlencode({
+  manifest = {
     apiVersion = "cert-manager.io/v1"
     kind       = "ClusterIssuer"
     metadata = {
@@ -98,5 +98,5 @@ resource "kubectl_manifest" "issuer_self_signed" {
     spec = {
       selfSigned = {}
     }
-  })
+  }
 }

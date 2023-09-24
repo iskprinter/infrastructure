@@ -1,6 +1,6 @@
-resource "kubectl_manifest" "pipeline_github_image_pr" {
-    yaml_body = yamlencode({
-    apiVersion = "tekton.dev/v1beta1"
+resource "kubernetes_manifest" "pipeline_github_image_pr" {
+  manifest = {
+    apiVersion = "tekton.dev/v1"
     kind       = "Pipeline"
     metadata = {
       namespace = "tekton-pipelines"
@@ -38,6 +38,7 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
         {
           name = "get-secret-github-token"
           taskRef = {
+            kind = "Task"
             name = "get-secret"
           }
           params = [
@@ -61,6 +62,7 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
           ]
           name = "report-initial-status"
           taskRef = {
+            kind = "Task"
             name = "report-status"
           }
           params = [
@@ -88,6 +90,7 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
           ]
           name = "github-get-pr-sha"
           taskRef = {
+            kind = "Task"
             name = "github-get-pr-sha"
           }
           params = [
@@ -115,6 +118,7 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
           ]
           name = "github-checkout-commit"
           taskRef = {
+            kind = "Task"
             name = "github-checkout-commit"
           }
           params = [
@@ -141,6 +145,7 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
           ]
           name = "build-and-push-image"
           taskRef = {
+            kind = "Task"
             name = "build-and-push-image"
           }
           params = [
@@ -183,10 +188,11 @@ resource "kubectl_manifest" "pipeline_github_image_pr" {
             }
           ]
           taskRef = {
+            kind = "Task"
             name = "report-status"
           }
         }
       ]
     }
-  })
+  }
 }

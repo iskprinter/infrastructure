@@ -17,15 +17,7 @@ include "env" {
 generate "providers" {
   path      = "terragrunt_generated_providers.tf"
   if_exists = "overwrite_terragrunt"
-  contents = <<-EOF
-
-    terraform {
-      required_providers {
-        kubectl = {
-          source = "gavinbunney/kubectl"
-        }
-      }
-    }
+  contents  = <<-EOF
 
     data "google_client_config" "provider" {}
 
@@ -43,11 +35,10 @@ generate "providers" {
       }
     }
     
-    provider "kubectl" {
+    provider "kubernetes" {
       host                   = "https://$${data.google_container_cluster.general_purpose.endpoint}"
       token                  = data.google_client_config.provider.access_token
       cluster_ca_certificate = base64decode(data.google_container_cluster.general_purpose.master_auth[0].cluster_ca_certificate) 
-      load_config_file       = false
     }
 
   EOF
@@ -57,7 +48,7 @@ generate "providers" {
 generate "modules" {
   path      = "terragrunt_generated_modules.tf"
   if_exists = "overwrite_terragrunt"
-  contents = <<-EOF
+  contents  = <<-EOF
 
     module "${replace(basename(path_relative_to_include("env")), "-", "_")}" {
       source                        = "../../../modules/${basename(path_relative_to_include("env"))}"

@@ -1,6 +1,6 @@
-resource "kubectl_manifest" "task_namespace_delete" {
-  yaml_body = yamlencode({
-    apiVersion = "tekton.dev/v1beta1"
+resource "kubernetes_manifest" "task_namespace_delete" {
+  manifest = {
+    apiVersion = "tekton.dev/v1"
     kind       = "Task"
     metadata = {
       name      = "namespace-delete"
@@ -11,12 +11,14 @@ resource "kubectl_manifest" "task_namespace_delete" {
         {
           name        = "namespace"
           description = "The name of the namespace to delete"
+          type        = "string"
         }
       ]
       steps = [
         {
-          image = "alpine/k8s:${var.alpine_k8s_version}"
-          name  = "namespace-delete"
+          computeResources = {}
+          image            = "alpine/k8s:${var.alpine_k8s_version}"
+          name             = "namespace-delete"
           env = [
             {
               name  = "NAMESPACE"
@@ -33,5 +35,5 @@ resource "kubectl_manifest" "task_namespace_delete" {
         }
       ]
     }
-  })
+  }
 }

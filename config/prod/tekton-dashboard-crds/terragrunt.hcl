@@ -20,7 +20,7 @@ include "env" {
 generate "providers" {
   path      = "terragrunt_generated_providers.tf"
   if_exists = "overwrite_terragrunt"
-  contents = <<-EOF
+  contents  = <<-EOF
 
     data "google_client_config" "provider" {}
 
@@ -42,7 +42,7 @@ generate "providers" {
 generate "modules" {
   path      = "terragrunt_generated_modules.tf"
   if_exists = "overwrite_terragrunt"
-  contents = <<-EOF
+  contents  = <<-EOF
 
     module "${replace(basename(path_relative_to_include("env")), "-", "_")}" {
       source                   = "../../../modules/${basename(path_relative_to_include("env"))}"

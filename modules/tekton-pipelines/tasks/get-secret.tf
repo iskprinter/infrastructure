@@ -1,6 +1,6 @@
-resource "kubectl_manifest" "task_get_secret" {
-  yaml_body = yamlencode({
-    apiVersion = "tekton.dev/v1beta1"
+resource "kubernetes_manifest" "task_get_secret" {
+  manifest = {
+    apiVersion = "tekton.dev/v1"
     kind       = "Task"
     metadata = {
       name      = "get-secret"
@@ -11,26 +11,31 @@ resource "kubectl_manifest" "task_get_secret" {
         {
           name        = "secret-key"
           description = "The key of the secret to fetch"
+          type        = "string"
         },
         {
           name        = "secret-name"
           description = "The name of the secret to fetch"
+          type        = "string"
         },
         {
           name        = "secret-namespace"
           description = "The namespace of the secret to fetch"
+          type        = "string"
         }
       ]
       results = [
         {
           name        = "secret-value"
           description = "The value of the secret"
+          type        = "string"
         }
       ]
       steps = [
         {
-          image = "alpine/k8s:${var.alpine_k8s_version}"
-          name  = "get-secret"
+          computeResources = {}
+          image            = "alpine/k8s:${var.alpine_k8s_version}"
+          name             = "get-secret"
           env = [
             {
               name  = "SECRET_KEY"
@@ -61,5 +66,5 @@ resource "kubectl_manifest" "task_get_secret" {
         }
       ]
     }
-  })
+  }
 }

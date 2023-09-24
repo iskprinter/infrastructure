@@ -1,6 +1,6 @@
-resource "kubectl_manifest" "task_terragrunt_destroy" {
-  yaml_body = yamlencode({
-    apiVersion = "tekton.dev/v1beta1"
+resource "kubernetes_manifest" "task_terragrunt_destroy" {
+  manifest = {
+    apiVersion = "tekton.dev/v1"
     kind       = "Task"
     metadata = {
       name      = "terragrunt-destroy"
@@ -11,18 +11,21 @@ resource "kubectl_manifest" "task_terragrunt_destroy" {
         {
           name        = "env-name"
           description = "The Terragrunt environment to deploy to"
+          type        = "string"
         },
         {
           name        = "pr-number"
           description = "If applicable, the application PR number to deploy"
           default     = "0"
+          type        = "string"
         }
       ]
       steps = [
         {
-          name       = "terragrunt-destroy"
-          image      = "alpine/terragrunt:${var.terraform_version}"
-          workingDir = "$(workspaces.default.path)"
+          computeResources = {}
+          name             = "terragrunt-destroy"
+          image            = "alpine/terragrunt:${var.terraform_version}"
+          workingDir       = "$(workspaces.default.path)"
           env = [
             {
               name  = "PR_NUMBER",
@@ -43,5 +46,5 @@ resource "kubectl_manifest" "task_terragrunt_destroy" {
         }
       ]
     }
-  })
+  }
 }

@@ -1,6 +1,6 @@
-resource "kubectl_manifest" "pipeline_github_release_push" {
-  yaml_body = yamlencode({
-    apiVersion = "tekton.dev/v1beta1"
+resource "kubernetes_manifest" "pipeline_github_release_push" {
+  manifest = {
+    apiVersion = "tekton.dev/v1"
     kind       = "Pipeline"
     metadata = {
       namespace = "tekton-pipelines"
@@ -28,6 +28,7 @@ resource "kubectl_manifest" "pipeline_github_release_push" {
         {
           name = "github-checkout-commit"
           taskRef = {
+            kind = "Task"
             name = "github-checkout-commit"
           }
           params = [
@@ -59,6 +60,7 @@ resource "kubectl_manifest" "pipeline_github_release_push" {
             }
           ]
           taskRef = {
+            kind = "Task"
             name = "terragrunt-apply"
           }
           params = [
@@ -70,5 +72,5 @@ resource "kubectl_manifest" "pipeline_github_release_push" {
         }
       ]
     }
-  })
+  }
 }

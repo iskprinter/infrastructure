@@ -1,5 +1,5 @@
-resource "kubectl_manifest" "trigger_github_release_push" {
-  yaml_body = yamlencode({
+resource "kubernetes_manifest" "trigger_github_release_push" {
+  manifest = {
     apiVersion = "triggers.tekton.dev/v1beta1"
     kind       = "Trigger"
     metadata = {
@@ -53,5 +53,5 @@ resource "kubectl_manifest" "trigger_github_release_push" {
         ref = "github-release-push"
       }
     }
-  })
+  }
 }
