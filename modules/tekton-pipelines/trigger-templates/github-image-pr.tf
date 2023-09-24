@@ -21,7 +21,7 @@ resource "kubernetes_manifest" "trigger_template_github_image_pr" {
           name = "repo-url"
         }
       ]
-      resourceTemplates = [
+      resourcetemplates = [
         {
           apiVersion = "tekton.dev/v1"
           kind       = "PipelineRun"

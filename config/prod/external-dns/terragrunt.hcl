@@ -21,16 +21,16 @@ generate "providers" {
 
     data "google_client_config" "provider" {}
 
-    data "google_container_cluster" "general_purpose" {
+    data "google_container_cluster" "main" {
       project  = "${include.env.locals.project}"
-      location = "${include.env.locals.region}-a"
+      location = "${include.env.locals.region}"
       name     = "${include.env.locals.cluster_name}"
     }
 
     provider "kubernetes" {
-      host                   = "https://$${data.google_container_cluster.general_purpose.endpoint}"
+      host                   = "https://$${data.google_container_cluster.main.endpoint}"
       token                  = data.google_client_config.provider.access_token
-      cluster_ca_certificate = base64decode(data.google_container_cluster.general_purpose.master_auth[0].cluster_ca_certificate)
+      cluster_ca_certificate = base64decode(data.google_container_cluster.main.master_auth[0].cluster_ca_certificate)
       experiments {
         manifest_resource = true
       }
@@ -47,6 +47,7 @@ generate "modules" {
 
     module "${replace(basename(path_relative_to_include("env")), "-", "_")}" {
       source               = "../../../modules/${basename(path_relative_to_include("env"))}"
+      domain_name          = "${include.env.locals.domain_name}"
       project              = "${include.env.locals.project}"
       external_dns_version = "${include.env.locals.external_dns_version}"
     }

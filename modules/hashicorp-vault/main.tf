@@ -36,9 +36,6 @@ resource "google_kms_key_ring" "hashicorp_vault" {
 resource "google_kms_crypto_key" "hashicorp_vault_recovery_key" {
   name     = "hashicorp-vault-recovery-key"
   key_ring = google_kms_key_ring.hashicorp_vault.id
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 resource "helm_release" "hashicorp_vault" {

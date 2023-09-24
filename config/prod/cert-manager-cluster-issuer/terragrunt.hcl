@@ -1,8 +1,5 @@
 dependencies {
-  paths = [
-    "../cluster",
-    "../tekton-pipeline-crds",
-  ]
+  paths = ["../cluster"]
 }
 
 include "global" {
@@ -29,7 +26,7 @@ generate "providers" {
       location = "${include.env.locals.region}"
       name     = "${include.env.locals.cluster_name}"
     }
-
+    
     provider "kubernetes" {
       host                   = "https://$${data.google_container_cluster.main.endpoint}"
       token                  = data.google_client_config.provider.access_token
@@ -37,6 +34,7 @@ generate "providers" {
     }
 
   EOF
+
 }
 
 generate "modules" {
@@ -45,8 +43,9 @@ generate "modules" {
   contents  = <<-EOF
 
     module "${replace(basename(path_relative_to_include("env")), "-", "_")}" {
-      source                  = "../../../modules/${basename(path_relative_to_include("env"))}"
-      tekton_triggers_version = "${include.env.locals.tekton_triggers_version}"
+      source                      = "../../../modules/${basename(path_relative_to_include("env"))}"
+      project                     = "${include.env.locals.project}"
+      use_real_lets_encrypt_certs = ${include.env.locals.use_real_lets_encrypt_certs}
     }
 
   EOF

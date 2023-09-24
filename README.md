@@ -56,14 +56,15 @@ Deploys a Kubernetes cluster and supporting resources
 ### Locally, with Minikube
 
 1. Initialize and deploy the remaining modules, in the following order:
-    1. `./config/prod/cert-manager`
-    1. `./config/prod/mongodb-operator`
+    1. `./config/dev/cert-manager`
+    1. `./config/dev/mongodb-operator`
 
 ### In the Cloud (Google Cloud Platform, GCP)
 
 1. Initialize and deploy the remaining modules, in the following order:
     1. `./config/prod/backups`
-    1. `./config/prod/cert-manager`
+    1. `./config/prod/cert-manager-operator`
+    1. `./config/prod/cert-manager-cluster-issuer`
     1. `./config/prod/container-registries`
     1. `./config/prod/external-dns`
     1. `./config/prod/external-secrets-operator`
@@ -77,7 +78,7 @@ Deploys a Kubernetes cluster and supporting resources
     1. `./config/prod/tekton-pipelines`
     1. `./config/prod/user-accounts`
 
-## Annotate the Kubernetes service account `tekton-pipelines-controller`
+## Annotate the Kubernetes service account `tekton-pipelines-controller` (Cloud only)
 
 Annotating this service account will link it to a Google service account with permission to pull images.
 

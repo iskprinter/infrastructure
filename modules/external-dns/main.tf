@@ -1,7 +1,7 @@
 resource "google_dns_managed_zone" "iskprinter" {
   project     = var.project
-  name        = "iskprinter-com"
-  dns_name    = "iskprinter.com."
+  name        = replace(var.domain_name, ".", "-")
+  dns_name    = "${var.domain_name}."
   description = "Managed zone for iskprinter hosts"
 }
 
@@ -100,10 +100,10 @@ resource "kubernetes_deployment" "external_dns" {
         service_account_name = "external-dns"
         container {
           name  = "external-dns"
-          image = "k8s.gcr.io/external-dns/external-dns:v${var.external_dns_version}"
+          image = "registry.k8s.io/external-dns/external-dns:v${var.external_dns_version}"
           args = [
             "--source=ingress",
-            "--domain-filter=iskprinter.com",
+            "--domain-filter=${var.domain_name}",
             "--provider=google",
             "--google-project=${var.project}",
             "--registry=txt",
