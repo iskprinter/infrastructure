@@ -1,5 +1,5 @@
-resource "kubectl_manifest" "trigger_template_github_release_pr_cleanup" {
-  yaml_body = yamlencode({
+resource "kubernetes_manifest" "trigger_template_github_release_pr_cleanup" {
+  manifest = {
     apiVersion = "triggers.tekton.dev/v1beta1"
     kind       = "TriggerTemplate"
     metadata = {
@@ -21,15 +21,14 @@ resource "kubectl_manifest" "trigger_template_github_release_pr_cleanup" {
           description = "The SSH URL of the repo"
         }
       ]
-      resourcetemplates = [
+      resourceTemplates = [
         {
-          apiVersion = "tekton.dev/v1beta1"
+          apiVersion = "tekton.dev/v1"
           kind       = "PipelineRun"
           metadata = {
             generateName = "github-release-pr-cleanup-"
           }
           spec = {
-            serviceAccountName = var.cicd_bot_name
             pipelineRef = {
               name = "github-release-pr-cleanup"
             }
@@ -47,6 +46,9 @@ resource "kubectl_manifest" "trigger_template_github_release_pr_cleanup" {
                 value = "$(tt.params.repo-url)"
               },
             ]
+            taskRunTemplate = {
+              serviceAccountName = var.cicd_bot_name
+            }
             workspaces = [
               {
                 name = "default"
@@ -68,5 +70,5 @@ resource "kubectl_manifest" "trigger_template_github_release_pr_cleanup" {
         }
       ]
     }
-  })
+  }
 }

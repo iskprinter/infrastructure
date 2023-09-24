@@ -13,7 +13,7 @@ include "env" {
 generate "modules" {
   path      = "terragrunt_generated_modules.tf"
   if_exists = "overwrite_terragrunt"
-  contents = <<-EOF
+  contents  = <<-EOF
 
     module "${replace(basename(path_relative_to_include("env")), "-", "_")}" {
       source  = "../../../modules/${basename(path_relative_to_include("env"))}"

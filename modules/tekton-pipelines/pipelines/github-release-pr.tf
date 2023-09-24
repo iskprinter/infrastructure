@@ -1,6 +1,6 @@
-resource "kubectl_manifest" "pipeline_github_release_pr" {
-  yaml_body = yamlencode({
-    apiVersion = "tekton.dev/v1beta1"
+resource "kubernetes_manifest" "pipeline_github_release_pr" {
+  manifest = {
+    apiVersion = "tekton.dev/v1"
     kind       = "Pipeline"
     metadata = {
       namespace = "tekton-pipelines"
@@ -38,6 +38,7 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
         {
           name = "get-secret-github-token"
           taskRef = {
+            kind = "Task"
             name = "get-secret"
           }
           params = [
@@ -58,6 +59,7 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
         {
           name = "report-initial-status"
           taskRef = {
+            kind = "Task"
             name = "report-status"
           }
           params = [
@@ -85,6 +87,7 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
           ]
           name = "github-get-pr-sha"
           taskRef = {
+            kind = "Task"
             name = "github-get-pr-sha"
           }
           params = [
@@ -112,6 +115,7 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
           ]
           name = "github-checkout-commit"
           taskRef = {
+            kind = "Task"
             name = "github-checkout-commit"
           }
           params = [
@@ -143,6 +147,7 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
             }
           ]
           taskRef = {
+            kind = "Task"
             name = "terragrunt-apply"
           }
           params = [
@@ -169,6 +174,7 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
             }
           ]
           taskRef = {
+            kind = "Task"
             name = "acceptance-test-get-image"
           }
         },
@@ -179,6 +185,7 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
           ]
           name = "acceptance-test-run"
           taskRef = {
+            kind = "Task"
             name = "acceptance-test-run"
           }
           params = [
@@ -215,6 +222,7 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
             }
           ]
           taskRef = {
+            kind = "Task"
             name = "report-status"
           }
         },
@@ -227,6 +235,7 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
             }
           ]
           taskRef = {
+            kind = "Task"
             name = "terragrunt-destroy"
           }
           params = [
@@ -242,5 +251,5 @@ resource "kubectl_manifest" "pipeline_github_release_pr" {
         },
       ]
     }
-  })
+  }
 }

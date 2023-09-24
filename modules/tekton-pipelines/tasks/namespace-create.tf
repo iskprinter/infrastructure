@@ -1,6 +1,6 @@
-resource "kubectl_manifest" "task_namespace_create" {
-  yaml_body = yamlencode({
-    apiVersion = "tekton.dev/v1beta1"
+resource "kubernetes_manifest" "task_namespace_create" {
+  manifest = {
+    apiVersion = "tekton.dev/v1"
     kind       = "Task"
     metadata = {
       name      = "namespace-create"
@@ -11,12 +11,14 @@ resource "kubectl_manifest" "task_namespace_create" {
         {
           name        = "namespace"
           description = "The name of the namespace to create"
+          type        = "string"
         }
       ]
       steps = [
         {
-          image = "alpine/k8s:${var.alpine_k8s_version}"
-          name  = "namespace-create"
+          computeResources = {}
+          image            = "alpine/k8s:${var.alpine_k8s_version}"
+          name             = "namespace-create"
           env = [
             {
               name  = "NAMESPACE"
@@ -33,5 +35,5 @@ resource "kubectl_manifest" "task_namespace_create" {
         }
       ]
     }
-  })
+  }
 }

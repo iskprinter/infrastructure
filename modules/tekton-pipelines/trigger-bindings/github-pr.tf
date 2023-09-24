@@ -1,6 +1,6 @@
 # Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/v1beta1/github/github-eventlistener-interceptor.yaml
-resource "kubectl_manifest" "trigger_binding_github_pr" {
-    yaml_body = yamlencode({
+resource "kubernetes_manifest" "trigger_binding_github_pr" {
+  manifest = {
     apiVersion = "triggers.tekton.dev/v1beta1"
     kind       = "TriggerBinding"
     metadata = {
@@ -27,5 +27,5 @@ resource "kubectl_manifest" "trigger_binding_github_pr" {
         }
       ]
     }
-  })
+  }
 }

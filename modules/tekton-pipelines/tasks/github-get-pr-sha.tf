@@ -1,6 +1,6 @@
-resource "kubectl_manifest" "task_github_get_pr_sha" {
-  yaml_body = yamlencode({
-    apiVersion = "tekton.dev/v1beta1"
+resource "kubernetes_manifest" "task_github_get_pr_sha" {
+  manifest = {
+    apiVersion = "tekton.dev/v1"
     kind       = "Task"
     metadata = {
       "namespace" = "tekton-pipelines"
@@ -11,10 +11,12 @@ resource "kubectl_manifest" "task_github_get_pr_sha" {
         {
           name        = "github-token"
           description = "The GitHub personal access token of the CICD bot"
+          type        = "string"
         },
         {
           name        = "github-username"
           description = "The GitHub username of the CICD bot"
+          type        = "string"
         },
         {
           name        = "pr-number"
@@ -31,12 +33,14 @@ resource "kubectl_manifest" "task_github_get_pr_sha" {
         {
           name        = "revision"
           description = "The git commit hash"
+          type        = "string"
         }
       ]
       steps = [
         {
-          name  = "github-get-pr-sha"
-          image = "alpine:3.14"
+          computeResources = {}
+          name             = "github-get-pr-sha"
+          image            = "alpine:3.14"
           env = [
             {
               name  = "GITHUB_USERNAME"
@@ -92,5 +96,5 @@ resource "kubectl_manifest" "task_github_get_pr_sha" {
         }
       ]
     }
-  })
+  }
 }

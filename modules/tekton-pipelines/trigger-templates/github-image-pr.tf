@@ -1,5 +1,5 @@
-resource "kubectl_manifest" "trigger_template_github_image_pr" {
-    yaml_body = yamlencode({
+resource "kubernetes_manifest" "trigger_template_github_image_pr" {
+  manifest = {
     apiVersion = "triggers.tekton.dev/v1beta1"
     kind       = "TriggerTemplate"
     metadata = {
@@ -21,15 +21,14 @@ resource "kubectl_manifest" "trigger_template_github_image_pr" {
           name = "repo-url"
         }
       ]
-      resourcetemplates = [
+      resourceTemplates = [
         {
-          apiVersion = "tekton.dev/v1beta1"
+          apiVersion = "tekton.dev/v1"
           kind       = "PipelineRun"
           metadata = {
             generateName = "github-image-pr-"
           }
           spec = {
-            serviceAccountName = var.cicd_bot_name
             pipelineRef = {
               name = "github-image-pr"
             }
@@ -51,6 +50,9 @@ resource "kubectl_manifest" "trigger_template_github_image_pr" {
                 value = "$(tt.params.repo-url)"
               }
             ]
+            taskRunTemplate = {
+              serviceAccountName = var.cicd_bot_name
+            }
             workspaces = [
               {
                 name = "default"
@@ -72,5 +74,5 @@ resource "kubectl_manifest" "trigger_template_github_image_pr" {
         }
       ]
     }
-  })
+  }
 }

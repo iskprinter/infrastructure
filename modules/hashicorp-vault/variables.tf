@@ -3,8 +3,8 @@ variable "hashicorp_vault_version" {
 }
 
 variable "gcp_project" {
-  type    = object({
-    name    = string
-    region  = string
+  type = object({
+    name   = string
+    region = string
   })
 }

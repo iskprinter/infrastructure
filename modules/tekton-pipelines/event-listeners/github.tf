@@ -1,6 +1,5 @@
-# Based on the example at https://github.com/tektoncd/triggers/blob/v0.15.2/examples/v1beta1/github/github-eventlistener-interceptor.yaml
-resource "kubectl_manifest" "event_listener_github" {
-  yaml_body = yamlencode({
+resource "kubernetes_manifest" "event_listener_github" {
+  manifest = {
     apiVersion = "triggers.tekton.dev/v1beta1"
     kind       = "EventListener"
     metadata = {
@@ -28,6 +27,9 @@ resource "kubectl_manifest" "event_listener_github" {
         kubernetesResource = {
           spec = {
             template = {
+              metadata = {
+                creationTimestamp = null
+              }
               spec = {
                 serviceAccountName = var.cicd_bot_name
                 containers = [
@@ -46,5 +48,5 @@ resource "kubectl_manifest" "event_listener_github" {
         }
       }
     }
-  })
+  }
 }

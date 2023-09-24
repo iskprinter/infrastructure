@@ -6,7 +6,7 @@ resource "helm_release" "external_secrets_operator" {
   namespace        = "external-secrets-operator"
   create_namespace = true
   set {
-    name = "installCRDs"
+    name  = "installCRDs"
     value = true
   }
 }

@@ -1,6 +1,6 @@
-resource "kubectl_manifest" "task_build_and_push_image" {
-  yaml_body = yamlencode({
-    apiVersion = "tekton.dev/v1beta1"
+resource "kubernetes_manifest" "task_build_and_push_image" {
+  manifest = {
+    apiVersion = "tekton.dev/v1"
     kind       = "Task"
     metadata = {
       name      = "build-and-push-image"
@@ -11,10 +11,12 @@ resource "kubectl_manifest" "task_build_and_push_image" {
         {
           description = "The name of the image to build"
           name        = "image-name"
+          type        = "string"
         },
         {
           description = "The tag of the image to build"
           name        = "image-tag"
+          type        = "string"
         }
       ]
       steps = [
@@ -36,8 +38,8 @@ resource "kubectl_manifest" "task_build_and_push_image" {
             "--destination=${var.region}-docker.pkg.dev/${var.project}/iskprinter/$(IMAGE_NAME):$(IMAGE_TAG)",
             "--cache=true"
           ]
-          resources = {
-            limits = {  
+          computeResources = {
+            limits = {
               memory = "3Gi"
             }
           }
@@ -50,5 +52,5 @@ resource "kubectl_manifest" "task_build_and_push_image" {
         }
       ]
     }
-  })
+  }
 }

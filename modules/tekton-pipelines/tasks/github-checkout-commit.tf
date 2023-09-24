@@ -1,6 +1,6 @@
-resource "kubectl_manifest" "task_github_checkout_commit" {
-  yaml_body = yamlencode({
-    apiVersion = "tekton.dev/v1beta1"
+resource "kubernetes_manifest" "task_github_checkout_commit" {
+  manifest = {
+    apiVersion = "tekton.dev/v1"
     kind       = "Task"
     metadata = {
       "namespace" = "tekton-pipelines"
@@ -27,9 +27,10 @@ resource "kubectl_manifest" "task_github_checkout_commit" {
       ]
       steps = [
         {
-          name       = "github-checkout"
-          image      = "alpine/git:v2.32.0"
-          workingDir = "$(workspaces.default.path)"
+          computeResources = {}
+          name             = "github-checkout"
+          image            = "alpine/git:v2.32.0"
+          workingDir       = "$(workspaces.default.path)"
           env = [
             {
               name  = "REPO_URL"
@@ -51,5 +52,5 @@ resource "kubectl_manifest" "task_github_checkout_commit" {
         }
       ]
     }
-  })
+  }
 }

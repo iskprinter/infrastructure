@@ -1,5 +1,5 @@
-resource "kubectl_manifest" "trigger_template_github_release_push" {
-  yaml_body = yamlencode({
+resource "kubernetes_manifest" "trigger_template_github_release_push" {
+  manifest = {
     apiVersion = "triggers.tekton.dev/v1beta1"
     kind       = "TriggerTemplate"
     metadata = {
@@ -15,15 +15,14 @@ resource "kubectl_manifest" "trigger_template_github_release_push" {
           name = "revision"
         }
       ]
-      resourcetemplates = [
+      resourceTemplates = [
         {
-          apiVersion = "tekton.dev/v1beta1"
+          apiVersion = "tekton.dev/v1"
           kind       = "PipelineRun"
           metadata = {
             generateName = "github-release-push-"
           }
           spec = {
-            serviceAccountName = var.cicd_bot_name
             pipelineRef = {
               name = "github-release-push"
             }
@@ -37,6 +36,9 @@ resource "kubectl_manifest" "trigger_template_github_release_push" {
                 value = "$(tt.params.revision)"
               }
             ]
+            taskRunTemplate = {
+              serviceAccountName = var.cicd_bot_name
+            }
             workspaces = [
               {
                 name = "default"
@@ -58,5 +60,5 @@ resource "kubectl_manifest" "trigger_template_github_release_push" {
         }
       ]
     }
-  })
+  }
 }

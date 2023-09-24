@@ -13,15 +13,7 @@ include "env" {
 generate "providers" {
   path      = "terragrunt_generated_providers.tf"
   if_exists = "overwrite_terragrunt"
-  contents = <<-EOF
-
-    terraform {
-      required_providers {
-        kubectl = {
-          source = "gavinbunney/kubectl"
-        }
-      }
-    }
+  contents  = <<-EOF
 
     provider "helm" {
       kubernetes {
@@ -29,8 +21,8 @@ generate "providers" {
         config_context = "minikube"
       }
     }
-
-    provider "kubectl" {
+  
+    provider "kubernetes" {
       config_path    = "~/.kube/config"
       config_context = "minikube"
     }
@@ -41,7 +33,7 @@ generate "providers" {
 generate "modules" {
   path      = "terragrunt_generated_modules.tf"
   if_exists = "overwrite_terragrunt"
-  contents = <<-EOF
+  contents  = <<-EOF
 
     module "${replace(basename(path_relative_to_include("env")), "-", "_")}" {
       source                        = "../../../modules/${basename(path_relative_to_include("env"))}"
