@@ -179,8 +179,14 @@ resource "kubernetes_role" "tekton_triggers" {
   # EventListeners need to be able to fetch all namespaced resources
   rule {
     api_groups = ["triggers.tekton.dev"]
-    resources  = ["eventlisteners", "triggerbindings", "triggertemplates", "triggers"]
-    verbs      = ["get", "list", "watch"]
+    resources = [
+      "eventlisteners",
+      "interceptors",
+      "triggerbindings",
+      "triggertemplates",
+      "triggers"
+    ]
+    verbs = ["get", "list", "watch"]
   }
   rule {
     api_groups = [""]
@@ -262,19 +268,6 @@ resource "google_service_account" "tekton_pipelines_controller" {
   account_id   = "tekton-pipelines-controller"
   display_name = "Tekton Pipelines Controller"
 }
-
-
-# Since this service account is created by the tekton_pipeline_crds,
-# It is not created here, but instead annotated in the README instructions
-# resource "kubernetes_service_account" "tekton_pipelines_controller" {
-#   metadata {
-#     namespace = "tekton-pipelines"
-#     name      = "tekton-pipelines-controller"
-#     annotations = {
-#       "iam.gke.io/gcp-service-account" = google_service_account.tekton_pipelines_controller.email
-#     }
-#   }
-# }
 
 resource "google_service_account_iam_member" "tekton_pipelines_controller_iam_workload_identity_user_member" {
   service_account_id = google_service_account.tekton_pipelines_controller.name
