@@ -1,6 +1,6 @@
 resource "kubernetes_manifest" "cicd_bot_ssh_key" {
   manifest = {
-    apiVersion = "external-secrets.io/v1alpha1"
+    apiVersion = "external-secrets.io/v1beta1"
     kind       = "ExternalSecret"
     type       = "Opaque"
     metadata = {
@@ -41,7 +41,7 @@ resource "kubernetes_manifest" "cicd_bot_ssh_key" {
 
 resource "kubernetes_manifest" "cicd_bot_personal_access_token" {
   manifest = {
-    apiVersion = "external-secrets.io/v1alpha1"
+    apiVersion = "external-secrets.io/v1beta1"
     kind       = "ExternalSecret"
     type       = "Opaque"
     metadata = {
@@ -79,7 +79,7 @@ resource "kubernetes_manifest" "cicd_bot_personal_access_token" {
 
 resource "kubernetes_manifest" "github_webhook_secret" {
   manifest = {
-    apiVersion = "external-secrets.io/v1alpha1"
+    apiVersion = "external-secrets.io/v1beta1"
     kind       = "ExternalSecret"
     type       = "Opaque"
     metadata = {
