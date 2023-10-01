@@ -5,9 +5,6 @@ resource "kubernetes_manifest" "event_listener_github" {
     metadata = {
       name      = "github"
       namespace = "tekton-pipelines"
-      finalizers = [
-        "eventlisteners.triggers.tekton.dev",
-      ]
     }
     spec = {
       namespaceSelector  = {}
@@ -27,9 +24,6 @@ resource "kubernetes_manifest" "event_listener_github" {
         kubernetesResource = {
           spec = {
             template = {
-              metadata = {
-                creationTimestamp = null
-              }
               spec = {
                 serviceAccountName = var.cicd_bot_name
                 containers = [
@@ -48,10 +42,5 @@ resource "kubernetes_manifest" "event_listener_github" {
         }
       }
     }
-  }
-  lifecycle {
-    ignore_changes = [
-      object.spec.resources.kubernetesResource.spec.template.metadata.creationTimestamp,
-    ]
   }
 }
