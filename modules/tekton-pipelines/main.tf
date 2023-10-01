@@ -8,6 +8,10 @@ module "pipelines" {
   source = "./pipelines"
 }
 
+module "secrets" {
+  source = "./secrets"
+}
+
 module "tasks" {
   source             = "./tasks"
   project            = var.project
