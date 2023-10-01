@@ -101,7 +101,7 @@ Annotating this service account will link it to a Google service account with pe
 
 1. Port-forward the hashicorp vault to your local machine.
     ```
-    kubectl --context 'gcp' -n hashicorp-vault port-forward svc/hashicorp-vault 8200:8200
+    kubectl --context gcp -n hashicorp-vault port-forward svc/hashicorp-vault 8200:8200
     ```
 
 1. Set the vault address in a shell.
@@ -109,21 +109,14 @@ Annotating this service account will link it to a Google service account with pe
     export VAULT_ADDR='http://localhost:8200'
     ```
 
-1. Initialize the vault. **Save the printed unseal key and root token.**
+1. Initialize the vault. **Save the printed recovery keys initial root token.**
     ```
-    vault operator init \
-        -key-shares=1 \
-        -key-threshold=1
-    ```
-
-1. Unseal the vault using the unseal key.
-    ```
-    vault operator unseal
+    vault operator init
     ```
 
 1. Set the vault token in your shell.
     ```
-    export VAULT_TOKEN='<vault-token>'
+    export VAULT_TOKEN='<initial-root-token>'
     ```
 
 1. Create an entity for yourself.
@@ -229,8 +222,9 @@ Annotating this service account will link it to a Google service account with pe
         {
             capabilities = ["create", "read", "update", "delete", "list", "sudo"]
         }
-    ' > /tmp/admin-policy.hcl
+    ' >/tmp/admin-policy.hcl
     vault policy write admin /tmp/admin-policy.hcl
+    rm /tmp/admin-policy.hcl
     ```
 
 1. Create an `admins` group.
@@ -268,8 +262,9 @@ Annotating this service account will link it to a Google service account with pe
         {
             capabilities = ["read"]
         }
-    ' > /tmp/secret-reader-policy.hcl
+    ' >/tmp/secret-reader-policy.hcl
     vault policy write secret-reader /tmp/secret-reader-policy.hcl
+    rm /tmp/secret-reader-policy.hcl
     ```
 
 1. Create an approle that belongs to the `secret-readers` group.
@@ -282,7 +277,7 @@ Annotating this service account will link it to a Google service account with pe
 
 1. Create a Secret and ClusterSecretStore resource. (You will have to deindent the following code block if you are viewing this file in a text editor.)
     ```
-    cat <<EOF | kubectl --context 'gcp' apply -f -
+    cat <<EOF | kubectl --context gcp apply -f -
     apiVersion: v1
     kind: Secret
     metadata:
@@ -296,7 +291,7 @@ Annotating this service account will link it to a Google service account with pe
       )
     EOF
     
-    cat <<EOF | kubectl --context 'gcp' apply -f -
+    cat <<EOF | kubectl --context gcp apply -f -
     apiVersion: external-secrets.io/v1beta1
     kind: ClusterSecretStore
     metadata:
@@ -362,7 +357,7 @@ Annotating this service account will link it to a Google service account with pe
 
     1. (Prod only) Add an SSH private key and a known_hosts file for Github so that the CICD bot can pull code.
         ```
-        vault kv put secret/ssh-bot-cicd-key \
+        vault kv put secret/cicd-bot-ssh-key \
             ssh-privatekey="$(cat ~/.ssh/IskprinterGitBot.id_rsa)" \
             known_hosts="$(ssh-keyscan github.com)"
         ```

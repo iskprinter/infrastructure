@@ -21,7 +21,7 @@ resource "google_project_iam_custom_role" "hashicorp_vault_role" {
   ]
 }
 
-resource "google_project_iam_member" "cicd_bot_role_member" {
+resource "google_project_iam_member" "hashicorp_vault_role_member" {
   project = var.gcp_project.name
   role    = google_project_iam_custom_role.hashicorp_vault_role.name
   member  = "serviceAccount:${google_service_account.hashicorp_vault.email}"
@@ -67,7 +67,7 @@ resource "helm_release" "hashicorp_vault" {
     value = google_kms_crypto_key.hashicorp_vault_recovery_key.name
   }
   set {
-    name  = "server.serviceaccount.annotations.iam\\.gke\\.io/gcp-service-account"
+    name  = "server.serviceAccount.annotations.iam\\.gke\\.io/gcp-service-account"
     value = google_service_account.hashicorp_vault.email
   }
 }
