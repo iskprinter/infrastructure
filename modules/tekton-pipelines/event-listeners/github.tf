@@ -49,4 +49,9 @@ resource "kubernetes_manifest" "event_listener_github" {
       }
     }
   }
+  lifecycle {
+    ignore_changes = [
+      object.spec.resources.kubernetesResource.spec.template.metadata.creationTimestamp,
+    ]
+  }
 }

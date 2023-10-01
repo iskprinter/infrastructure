@@ -46,7 +46,7 @@ resource "helm_release" "cert_manager_operator" {
     for_each = (var.kubernetes_provider == "gcp" ? toset([{}]) : toset([]))
     content {
       name  = "serviceAccount.annotations.iam\\.gke\\.io/gcp-service-account"
-      value = "${google_service_account.cert_manager[0].name}@${var.project}.iam.gserviceaccount.com"
+      value = google_service_account.cert_manager[0].email
     }
   }
 }
