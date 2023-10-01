@@ -1,6 +1,7 @@
 module "event_listeners" {
   source        = "./event-listeners"
   cicd_bot_name = var.cicd_bot_name
+  domain_name   = var.domain_name
 }
 
 module "pipelines" {

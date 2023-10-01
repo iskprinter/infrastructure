@@ -9,7 +9,7 @@ resource "kubernetes_ingress_v1" "tekton_triggers_ingress" {
   spec {
     ingress_class_name = "nginx"
     rule {
-      host = "tekton-triggers.iskprinter.com"
+      host = "tekton-triggers.${var.domain_name}"
       http {
         path {
           path = "/"
@@ -26,9 +26,9 @@ resource "kubernetes_ingress_v1" "tekton_triggers_ingress" {
     }
     tls {
       hosts = [
-        "tekton-triggers.iskprinter.com"
+        "tekton-triggers.${var.domain_name}"
       ]
-      secret_name = "tls-tekton-triggers-iskprinter-com"
+      secret_name = "tls-tekton-triggers-${replace(var.domain_name, ".", "-")}"
     }
   }
 }

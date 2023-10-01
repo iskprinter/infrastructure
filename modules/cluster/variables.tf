@@ -1,8 +1,12 @@
+variable "kubernetes_release_channel" {
+  type = string
+}
+
 variable "project" {
   type = string
 }
 
-variable "location" {
+variable "region" {
   type = string
 }
 

@@ -1,5 +1,9 @@
 # Variables provided by Terragrunt
 
+variable "domain_name" {
+  type = string
+}
+
 variable "project" {
   type = string
 }

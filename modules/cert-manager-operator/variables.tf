@@ -1,3 +1,7 @@
+variable "cert_manager_namespace" {
+  type = string
+}
+
 variable "cert_manager_operator_version" {
   type = string
 }
@@ -9,8 +13,4 @@ variable "kubernetes_provider" {
 variable "project" {
   default = "N/A"
   type    = string
-}
-
-variable "use_real_lets_encrypt_certs" {
-  type = bool
 }

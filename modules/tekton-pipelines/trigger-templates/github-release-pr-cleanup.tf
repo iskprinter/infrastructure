@@ -21,7 +21,7 @@ resource "kubernetes_manifest" "trigger_template_github_release_pr_cleanup" {
           description = "The SSH URL of the repo"
         }
       ]
-      resourceTemplates = [
+      resourcetemplates = [
         {
           apiVersion = "tekton.dev/v1"
           kind       = "PipelineRun"

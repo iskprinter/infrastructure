@@ -21,11 +21,6 @@ generate "providers" {
         config_context = "minikube"
       }
     }
-  
-    provider "kubernetes" {
-      config_path    = "~/.kube/config"
-      config_context = "minikube"
-    }
 
   EOF
 }
@@ -37,9 +32,9 @@ generate "modules" {
 
     module "${replace(basename(path_relative_to_include("env")), "-", "_")}" {
       source                        = "../../../modules/${basename(path_relative_to_include("env"))}"
+      cert_manager_namespace        = "${include.global.locals.cert_manager_namespace}"
       cert_manager_operator_version = "${include.global.locals.cert_manager_operator_version}"
       kubernetes_provider           = "${include.env.locals.kubernetes_provider}"
-      use_real_lets_encrypt_certs   = ${include.env.locals.use_real_lets_encrypt_certs}
     }
 
   EOF
