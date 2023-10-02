@@ -326,38 +326,86 @@ Annotating this service account will link it to a Google service account with pe
         kv
     ```
 
-1. Add the following secrets.
+## Create Secrets
 
-    1. (Local and Prod) Add the Eve API credentials for the eve application.
+1. **Local** Create the `iskprinter` namespace.
+    ```
+    kubectl --context minikube create namespace iskprinter
+    ```
+
+1. Create the Eve API credentials. (From https://developers.eveonline.com/applications.)
+
+    1. **Local** (You will have to deindent the following code block if you are viewing this file in a text editor.)
+        ```
+        cat <<EOF | kubectl --context minikube apply -f -
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          namespace: iskprinter
+          name: api-client-credentials
+        stringData:
+          id: <api-client-id>
+          secret: <api-client-secret>
+        EOF
+        ```
+
+    1. **Prod**
         ```
         vault kv put secret/api-client-credentials \
             id=<client-id> \
             secret=<client-secret>
         ```
 
-    1. (Local and Prod) Add the Iskprinter JWT public and private keys.
+1. Create the JWT private and public keys. If you need to create these from scratch, use `openssl`.
+    ```
+    openssl ecparam \
+        -name secp521r1 \
+        -genkey \
+        -noout \
+        -out <path-to-private-key>
+    openssl ec \
+        -in <path-to-private-key> \
+        -pubout \
+        -out <path-to-public-key>
+    ```
+
+    1. **Local** (You will have to deindent the following code block if you are viewing this file in a text editor.)
+        ```
+        cat <<EOF | kubectl --context minikube apply -f -
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          namespace: iskprinter
+          name: iskprinter-jwt-keys
+        stringData:
+          private-key: $(cat <path-to-private-key> | base64)
+          public-key: $(cat <path-to-public-key> | base64)
+        EOF
+        ```
+
+    1. **Prod**
         ```
         vault kv put secret/iskprinter-jwt-keys \
             public-key=@<path-to-public-key> \
             private-key=@<path-to-private-key>
         ```
 
-    1. (Prod only) Add a personal access token so the CICD bot can update the Github build status.
-        ```
-        vault kv put secret/cicd-bot-personal-access-token \
-            username=IskprinterGitBot \
-            password=<cicd-bot-personal-access-token>
-        ```
+1. **Prod** Add a personal access token so the CICD bot can update the Github build status.
+    ```
+    vault kv put secret/cicd-bot-personal-access-token \
+        username=IskprinterGitBot \
+        password=<cicd-bot-personal-access-token>
+    ```
 
-    1. (Prod only) Add a Github webhook secret so that the Github status webhook is protected.
-        ```
-        vault kv put secret/github-webhook-secret \
-            secret=<github-webhook-secret>
-        ```
+1. **Prod** Add a Github webhook secret so that the Github status webhook is protected.
+    ```
+    vault kv put secret/github-webhook-secret \
+        secret=<github-webhook-secret>
+    ```
 
-    1. (Prod only) Add an SSH private key and a known_hosts file for Github so that the CICD bot can pull code.
-        ```
-        vault kv put secret/cicd-bot-ssh-key \
-            ssh-privatekey="$(cat ~/.ssh/IskprinterGitBot.id_rsa)" \
-            known_hosts="$(ssh-keyscan github.com)"
-        ```
+1. **Prod** Add an SSH private key and a `known_hosts` file for Github so that the CICD bot can pull code.
+    ```
+    vault kv put secret/cicd-bot-ssh-key \
+        ssh-privatekey="$(cat ~/.ssh/IskprinterGitBot.id_rsa)" \
+        known_hosts="$(ssh-keyscan github.com)"
+    ```
