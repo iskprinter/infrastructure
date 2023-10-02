@@ -38,7 +38,7 @@ resource "kubernetes_manifest" "trigger_github_image_pr" {
           params = [
             {
               name  = "filter"
-              value = "(requestURL.parseURL().path == \"/github/images\") && (body.action in ['opened', 'synchronize', 'reopened'])"
+              value = "(requestURL.parseURL().path == \"/github/images\") && (body.action in ['opened', 'push', 'reopened', 'synchronize'])"
             }
           ]
         }
