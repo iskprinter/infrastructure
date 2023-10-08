@@ -8,12 +8,12 @@ Deploys a Kubernetes cluster and supporting resources
 
 1. Create a GCS bucket for use as a terraform backend.
     ```bash
-    gsutil mb -l US gs://iskprinter-tf-state
+    gsutil mb -l US gs://iskprinter-prod-tf-state
     ```
 
 1. Enable versioning on the bucket.
     ```bash
-    gsutil versioning set on gs://iskprinter-tf-state
+    gsutil versioning set on gs://iskprinter-prod-tf-state
     ```
 
 ## Create a Kubernetes cluster
